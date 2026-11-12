@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npm run build",
+  "builds": [{ "src": "api/index.ts", "use": "@vercel/node" }],
+  "routes": [{ "src": "/(.*)", "dest": "api/index.js" }],
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": "static/**"
+    }
+  }
+}

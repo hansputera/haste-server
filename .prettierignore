@@ -1,0 +1,6 @@
+dist
+static
+package-lock.json
+CHANGELOG.md
+data
+config.js

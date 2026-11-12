@@ -1,0 +1,199 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "haste",
+    "version": "1.0.0",
+    "description": "Private pastebin server."
+  },
+  "paths": {
+    "/documents": {
+      "post": {
+        "operationId": "createDocument",
+        "summary": "Store a new document and return its key.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "text/plain": { "schema": { "type": "string" } },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": { "data": { "type": "string" } },
+                "required": ["data"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stored.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/DocumentKey" } }
+            }
+          },
+          "400": {
+            "description": "Body longer than maxLength.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "413": {
+            "description": "Body over the hard upload ceiling.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Store failure.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
+        }
+      }
+    },
+    "/documents/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": {
+        "operationId": "getDocument",
+        "summary": "Return a document and its key.",
+        "responses": {
+          "200": {
+            "description": "Found.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Document" } }
+            }
+          },
+          "404": {
+            "description": "No such document.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
+        }
+      },
+      "head": {
+        "operationId": "headDocument",
+        "summary": "Same as GET, without a body.",
+        "responses": {
+          "200": { "description": "Found." },
+          "404": { "description": "No such document." }
+        }
+      }
+    },
+    "/raw/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": {
+        "operationId": "getRawDocument",
+        "summary": "Return a document as plain text.",
+        "responses": {
+          "200": {
+            "description": "Found.",
+            "content": { "text/plain": { "schema": { "type": "string" } } }
+          },
+          "404": {
+            "description": "No such document.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
+        }
+      },
+      "head": {
+        "operationId": "headRawDocument",
+        "summary": "Same as GET, without a body.",
+        "responses": {
+          "200": { "description": "Found." },
+          "404": { "description": "No such document." }
+        }
+      }
+    },
+    "/healthz": {
+      "get": {
+        "operationId": "health",
+        "summary": "Liveness probe. Never touches the store.",
+        "responses": {
+          "200": {
+            "description": "Process is up.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Status" } }
+            }
+          }
+        }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "operationId": "ready",
+        "summary": "Readiness probe. Ready once documents are seeded.",
+        "responses": {
+          "200": {
+            "description": "Ready.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Status" } }
+            }
+          },
+          "503": {
+            "description": "Not ready.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Status" } }
+            }
+          }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "operationId": "openapi",
+        "summary": "This document.",
+        "responses": {
+          "200": {
+            "description": "OpenAPI 3.1 description of this server.",
+            "content": { "application/json": { "schema": { "type": "object" } } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "Id": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "key, optionally followed by a .ext suffix that is ignored"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": { "message": { "type": "string" } },
+        "required": ["message"]
+      },
+      "DocumentKey": {
+        "type": "object",
+        "properties": { "key": { "type": "string" } },
+        "required": ["key"]
+      },
+      "Document": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "string" },
+          "key": { "type": "string" }
+        },
+        "required": ["data", "key"]
+      },
+      "Status": {
+        "type": "object",
+        "properties": { "status": { "type": "string" } },
+        "required": ["status"]
+      }
+    }
+  }
+}

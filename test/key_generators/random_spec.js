@@ -1,8 +1,7 @@
-/* global describe, it */
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
 
-const assert = require('assert');
-
-const Generator = require('../../lib/key_generators/random');
+import Generator from '../../dist/lib/key_generators/random.js';
 
 describe('RandomKeyGenerator', () => {
   describe('generation', () => {
@@ -12,12 +11,12 @@ describe('RandomKeyGenerator', () => {
     });
 
     it('should use a key from the given keyset if given', () => {
-      const gen = new Generator({keyspace: 'A'});
+      const gen = new Generator({ keyspace: 'A' });
       assert.equal(gen.createKey(6), 'AAAAAA');
     });
 
     it('should not use a key from the given keyset if not given', () => {
-      const gen = new Generator({keyspace: 'A'});
+      const gen = new Generator({ keyspace: 'A' });
       assert.ok(!gen.createKey(6).includes('B'));
     });
   });

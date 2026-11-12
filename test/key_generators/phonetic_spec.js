@@ -1,8 +1,7 @@
-/* global describe, it */
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
 
-const assert = require('assert');
-
-const Generator = require('../../lib/key_generators/phonetic');
+import Generator from '../../dist/lib/key_generators/phonetic.js';
 
 const vowels = 'aeiou';
 const consonants = 'bcdfghjklmnpqrstvwxyz';
@@ -11,7 +10,7 @@ describe('PhoneticKeyGenerator', () => {
   describe('generation', () => {
     it('should return a key of the proper length', () => {
       const gen = new Generator();
-      assert.equal(6, gen.createKey(6).length);
+      assert.equal(gen.createKey(6).length, 6);
     });
 
     it('should alternate consonants and vowels', () => {
@@ -21,7 +20,7 @@ describe('PhoneticKeyGenerator', () => {
 
       // if it starts with a consonant, we expect cvc
       // if it starts with a vowel, we expect vcv
-      if(consonants.includes(key[0])) {
+      if (consonants.includes(key[0])) {
         assert.ok(consonants.includes(key[0]));
         assert.ok(consonants.includes(key[2]));
         assert.ok(vowels.includes(key[1]));

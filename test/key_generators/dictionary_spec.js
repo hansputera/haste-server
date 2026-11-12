@@ -1,13 +1,13 @@
-/* global describe, it */
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
-const assert = require('assert');
+import Generator from '../../dist/lib/key_generators/dictionary.js';
 
-const fs = require('fs');
-
-const Generator = require('../../lib/key_generators/dictionary');
-
-describe('DictionaryGenerator', function() {
-  describe('options', function() {
+describe('DictionaryGenerator', function () {
+  describe('options', function () {
     it('should throw an error if given no options', () => {
       assert.throws(() => {
         new Generator();
@@ -20,14 +20,21 @@ describe('DictionaryGenerator', function() {
       }, Error);
     });
   });
-  describe('generation', function() {
-    it('should return a key of the proper number of words from the given dictionary', () => {
-      const path = '/tmp/haste-server-test-dictionary';
-      const words = ['cat'];
-      fs.writeFileSync(path, words.join('\n'));
+  describe('generation', function () {
+    it('should return a key of the proper number of words from the given dictionary', function () {
+      return new Promise((resolve, reject) => {
+        const file = path.join(os.tmpdir(), 'haste-server-test-dictionary');
+        const words = ['cat'];
+        fs.writeFileSync(file, words.join('\n'));
 
-      const gen = new Generator({path}, () => {
-        assert.equal('catcatcat', gen.createKey(3));
+        const gen = new Generator({ path: file }, () => {
+          try {
+            assert.equal(gen.createKey(3), 'catcatcat');
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        });
       });
     });
   });

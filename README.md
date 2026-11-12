@@ -1,15 +1,15 @@
 # Haste
 
 Haste is an open-source pastebin software written in node.js, which is easily
-installable in any network.  It can be backed by either redis or filesystem,
-and has a very easy adapter interface for other stores.  A publicly available
+installable in any network. It can be backed by either redis or filesystem,
+and has a very easy adapter interface for other stores. A publicly available
 version can be found at [hastebin.com](http://hastebin.com)
 
 Major design objectives:
 
-* Be really pretty
-* Be really simple
-* Be easy to set up and use
+- Be really pretty
+- Be really simple
+- Be easy to set up and use
 
 Haste works really well with a little utility called
 [haste-client](https://github.com/seejohnrun/haste-client), allowing you
@@ -18,44 +18,154 @@ to do things like:
 `cat something | haste`
 
 which will output a URL to share containing the contents of `cat something`'s
-STDOUT.  Check the README there for more details and usages.
+STDOUT. Check the README there for more details and usages.
 
 ## Tested Browsers
 
-* Firefox 8
-* Chrome 17
-* Safari 5.3
+Any current browser: the client is plain DOM and `fetch`, with no framework.
+
+## Requirements
+
+Node.js 20 or newer, **or** Bun 1.4 or newer. Node runs the compiled output in
+`dist/`; Bun runs the TypeScript sources directly. The package is ESM
+(`"type": "module"`).
 
 ## Installation
 
 1.  Download the package, and expand it
 2.  Explore the settings inside of config.js, but the defaults should be good
 3.  `npm install`
-4.  `npm start` (you may specify an optional `<config-path>` as well)
+4.  `npm run build`
+5.  `npm start` (you may specify an optional `<config-path>` as well)
+
+`prestart` rebuilds, so a plain `npm start` after an edit still serves the new
+code; the explicit `npm run build` in the list above is what produces `dist/` on
+a fresh checkout. `npm run serve` runs `dist/server.js` with no build step and no
+dev dependencies — that is what a production image or a PaaS `Procfile` uses.
+
+## Development
+
+| command                           | what it does                              |
+| --------------------------------- | ----------------------------------------- |
+| `npm run dev`                     | `node --watch` on the TypeScript sources  |
+| `npm run dev:bun`                 | `bun --watch` on the TypeScript sources   |
+| `npm run check`                   | `tsc --noEmit` (strict)                   |
+| `npm run lint`                    | eslint, flat config, type-aware           |
+| `npm run format` / `format:check` | prettier                                  |
+| `npm test`                        | build, then `node --test` against `dist/` |
+| `npm run check:openapi`           | validates `openapi.json`                  |
+
+## Operations
+
+- `GET /healthz` — liveness. Answers `{"status":"ok"}` and never touches the
+  store, so a store outage does not restart the process.
+- `GET /readyz` — readiness. `200 {"status":"ready"}` once the static documents
+  are seeded, `503 {"status":"unavailable"}` before that and during shutdown.
+- `GET /openapi.json` — the OpenAPI 3.1 description of the API.
+- `SIGTERM`/`SIGINT` drain in-flight requests for up to 10 seconds, then exit 0
+  (or 1 if the drain times out). A second signal exits immediately.
+- Logs are one JSON object per line on stdout, including `requestId`, `method`,
+  `path`, `status` and `ms` for every request. An inbound `X-Request-Id` is
+  propagated and echoed.
 
 ## Settings
 
-* `host` - the host the server runs on (default localhost)
-* `port` - the port the server runs on (default 7777)
-* `keyLength` - the length of the keys to user (default 10)
-* `maxLength` - maximum length of a paste (default 400000)
-* `staticMaxAge` - max age for static assets (86400)
-* `recompressStaticAssets` - whether or not to compile static js assets (true)
-* `documents` - static documents to serve (ex: http://hastebin.com/about.com)
-  in addition to static assets.  These will never expire.
-* `storage` - storage options (see below)
-* `logging` - logging preferences
-* `keyGenerator` - key generator options (see below)
-* `rateLimits` - settings for rate limiting (see below)
+Every setting, its type, its default, and every environment variable that
+supplies it is listed in **[docs/configuration.md](docs/configuration.md)**,
+generated from the field table the server validates against. A short tour:
+
+- `host` / `port` — where the listener binds (default `0.0.0.0:7777`)
+- `keyLength` / `maxLength` — key size and largest accepted paste
+- `staticMaxAge` — `max-age` for cacheable static assets
+- `documents` — seeded documents (`name=path`); these never expire
+- `storage`, `logging`, `keyGenerator`, `rateLimits` — see below
+
+## Configuration
+
+Precedence, lowest to highest:
+
+1. built-in defaults
+2. a config file — `HASTE_CONFIG`, the `--config` argument, or `./config.js`
+3. the environment
+
+Every setting has a canonical environment variable derived from its path:
+`HASTE_HOST`, `HASTE_STORAGE__TYPE`, `HASTE_RATE_LIMITS__CATEGORIES__NORMAL__EVERY`.
+The historical `PORT`/`STORAGE_TYPE`-style names still work, below the canonical
+ones. `HASTE_CONFIG=` (empty) skips the file layer entirely, for deployments that
+inject every value.
+
+A bad setting fails the boot with every problem at once, naming the layer that
+supplied it:
+
+```
+invalid config: port: must be >= 1 (got 0)
+invalid config: storage.type: must be one of file, redis, … (got s3)
+```
+
+The resolved config is logged once at boot with secrets masked and per-key
+provenance (`default`/`file`/`env`/`secret-file`).
+
+### Secrets: mounted files, not environment variables
+
+`<NAME>_FILE` is the Docker/Kubernetes convention: point it at a mounted secret
+and the value never enters the process environment.
+
+```sh
+docker run \
+  -e HASTE_CONFIG=/etc/haste/config.json \
+  -e HASTE_STORAGE__PASSWORD_FILE=/run/secrets/storage_password \
+  -v ./config.json:/etc/haste/config.json:ro \
+  -v ./storage_password:/run/secrets/storage_password:ro \
+  haste-server
+```
+
+In Kubernetes, mount the ConfigMap as the config file and the Secret as files:
+
+```yaml
+env:
+  - name: HASTE_CONFIG
+    value: /etc/haste/config.json
+  - name: HASTE_STORAGE__PASSWORD_FILE
+    value: /run/secrets/storage_password
+volumeMounts:
+  - { name: config, mountPath: /etc/haste }
+  - { name: storage-secret, mountPath: /run/secrets, readOnly: true }
+volumes:
+  - name: config
+    configMap: { name: haste-config }
+  - name: storage-secret
+    secret: { secretName: haste-storage }
+```
+
+### Secrets: SOPS
+
+A config file encrypted with [SOPS](https://getsops.io) is decrypted at boot. It
+is detected by a top-level `sops` block, by a `.sops.`/`.yaml`/`.yml` name, or
+forced with `HASTE_CONFIG_SOPS=1`. Decryption shells out to `sops`, so key
+material (age, PGP, KMS, Vault) stays owned by SOPS and never reaches the
+process.
+
+```sh
+sops --encrypt --age "$HASTE_AGE_RECIPIENT" config.json > config.sops.json
+HASTE_CONFIG=config.sops.json node dist/server.js
+```
+
+`HASTE_CONFIG_NO_SOPS=1` disables detection, and an encrypted file is then
+refused rather than read as plaintext.
+
+```sh
+npm run check:config-docs   # fails when docs/configuration.md drifted from the code
+```
 
 ## Rate Limiting
 
-When present, the `rateLimits` option enables built-in rate limiting courtesy
-of `connect-ratelimit`.  Any of the options supported by that library can be
-used and set in `config.js`.
-
-See the README for [connect-ratelimit](https://github.com/dharmafly/connect-ratelimit)
-for more information!
+Rate limiting is configured under `rateLimits.categories`. The
+`categories.normal` block is the default limit; `categories.whitelist` and
+`categories.blacklist` are applied to the addresses listed in `whitelist` and
+`blacklist`. Each category takes `totalRequests` and `every` (in milliseconds).
+A whitelisted client with no whitelist category is not limited. Exceeding a
+limit answers `429` with `{"message":"Rate limit exceeded."}` and a `Retry-After`
+header.
 
 ## Key Generation
 
@@ -63,7 +173,7 @@ for more information!
 
 Attempts to generate phonetic keys, similar to `pwgen`
 
-``` json
+```json
 {
   "type": "phonetic"
 }
@@ -73,7 +183,7 @@ Attempts to generate phonetic keys, similar to `pwgen`
 
 Generates a random key
 
-``` json
+```json
 {
   "type": "random",
   "keyspace": "abcdef"
@@ -90,7 +200,7 @@ for the key.
 To use file storage (the default) change the storage section in `config.js` to
 something like:
 
-``` json
+```json
 {
   "path": "./data",
   "type": "file"
@@ -104,13 +214,14 @@ File storage currently does not support paste expiration, you can follow [#191](
 ### Redis
 
 To use redis storage you must install the `redis` package in npm, and have
-`redis-server` running on the machine.
+`redis-server` running on the machine. The store imports it lazily, so it is
+only needed by deployments that select this type.
 
 `npm install redis`
 
 Once you've done that, your config section should look like:
 
-``` json
+```json
 {
   "type": "redis",
   "host": "localhost",
@@ -135,7 +246,7 @@ To use postgres storage you must install the `pg` package in npm
 
 Once you've done that, your config section should look like:
 
-``` json
+```json
 {
   "type": "postgres",
   "connectionUrl": "postgres://user:password@host:5432/database"
@@ -162,7 +273,7 @@ To use mongodb storage you must install the 'mongodb' package in npm
 
 Once you've done that, your config section should look like:
 
-``` json
+```json
 {
   "type": "mongo",
   "connectionUrl": "mongodb://localhost:27017/database"
@@ -184,7 +295,7 @@ To use memcache storage you must install the `memcached` package via npm
 
 Once you've done that, your config section should look like:
 
-``` json
+```json
 {
   "type": "memcached",
   "host": "127.0.0.1",
@@ -206,7 +317,7 @@ To use the RethinkDB storage system, you must install the `rethinkdbdash` packag
 
 Once you've done that, your config section should look like this:
 
-``` json
+```json
 {
   "type": "rethinkdb",
   "host": "127.0.0.1",
@@ -228,7 +339,7 @@ To use the Google Datastore storage system, you must install the `@google-cloud/
 
 Once you've done that, your config section should look like this:
 
-``` json
+```json
 {
   "type": "google-datastore"
 }
@@ -260,18 +371,86 @@ your bucket:
 
 ```json
 {
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Action": [
-                "s3:GetObject",
-                "s3:PutObject"
-            ],
-            "Effect": "Allow",
-            "Resource": "arn:aws:s3:::your-bucket-name-goes-here/*"
-        }
-    ]
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": ["s3:GetObject", "s3:PutObject"],
+      "Effect": "Allow",
+      "Resource": "arn:aws:s3:::your-bucket-name-goes-here/*"
+    }
+  ]
 }
+```
+
+## Deployment
+
+The app is built once by `createApp()` in `src/http.ts` and never listens itself;
+`src/runtime.ts` attaches a listener for Node or Bun. The same application object
+therefore runs as a long-lived process or as a function.
+
+### Any server (VPS, container, PaaS with a Node runtime)
+
+```bash
+npm ci
+npm run build
+PORT=8080 HOST=0.0.0.0 npm run serve
+```
+
+Or point the platform at `dist/server.js` directly. Set `PORT`; most hosts inject
+it. On Bun, `bun src/server.ts` runs the sources with no build step, and
+`bun dist/server.js` runs the compiled output.
+
+### Docker
+
+`Dockerfile` is a two-stage build on `node:22-alpine`. The first stage installs
+dev dependencies, compiles `src/` to `dist/` and prunes; the second copies only
+`dist/`, `static/`, the package metadata and the optional store clients, and runs
+as the unprivileged `node` user. `docker-entrypoint.sh` translates the
+`STORAGE_*` environment variables into a `config.js` through
+`dist/docker-entrypoint.js`.
+
+```bash
+docker build -t haste-server .
+docker run -p 7777:7777 -e STORAGE_TYPE=file -e STORAGE_FILEPATH=/tmp/data haste-server
+```
+
+The image refuses `STORAGE_TYPE=file` on a read-only working directory: the file
+store writes to `./data`, so mount a volume owned by uid 1000 or point
+`STORAGE_FILEPATH` at a writable path.
+
+### Vercel
+
+`vercel.json` routes every request to `api/index.ts`, which delegates to
+`@hono/vercel`'s Node handler and bundles `static/**`. The build command is
+`npm run build`, because the handler imports `dist/http.js`. Set the storage
+environment variables in the project settings; **the file store is refused on
+Vercel**, because the filesystem is read-only and ephemeral.
+
+### Netlify
+
+`netlify.toml` redirects every request to `netlify/functions/server.ts`, which
+delegates to `@hono/netlify`'s Web `Request`/`Response` handler. The build command
+is `npm run build` for the same reason. **The file store is refused on Netlify**
+for the same reason.
+
+### Serverless storage
+
+Use `redis`, `postgres`, `mongo`, `memcached`, `amazon-s3`,
+`google-datastore` or `rethinkdb`. For Postgres, point `DATABASE_URL` at your
+provider's pooled endpoint (for example with `?pgbouncer=true`) since each
+invocation may open a connection. The pool is created lazily, so an unset or
+invalid URL only fails on the first query.
+
+### Which store
+
+`file` works on a server that owns its disk and nowhere else. Store clients are
+imported lazily: selecting `redis` requires the `redis` package installed, and
+so on. The Docker image installs all of them; a bare `npm install` installs only
+the declared dependencies (`hono`, `@hono/node-server`, `@hono/vercel`,
+`@hono/netlify`, `busboy`, `express-rate-limit`, `pino`, `pg`), so add your client:
+
+```bash
+npm install redis        # or memcached, mongodb, aws-sdk, @google-cloud/datastore, rethinkdbdash
 ```
 
 ## Docker
@@ -384,6 +563,5 @@ SOFTWARE
 
 ### Other components:
 
-* jQuery: MIT/GPL license
-* highlight.js: Copyright © 2006, Ivan Sagalaev
-* highlightjs-coffeescript: WTFPL - Copyright © 2011, Dmytrii Nagirniak
+- highlight.js: Copyright © 2006, Ivan Sagalaev
+- highlightjs-coffeescript: WTFPL - Copyright © 2011, Dmytrii Nagirniak

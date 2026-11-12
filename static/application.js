@@ -1,6 +1,27 @@
-/* global $, hljs, window, document */
+/* global window, document, history, fetch, Worker */
 
 ///// represents a single document
+
+// Highlighting happens in a Web Worker so a large paste never blocks input.
+// `value === null` from the worker means "escape it yourself" (the `txt` path).
+var highlighter = (function () {
+  var worker = new Worker('highlight-worker.js');
+  var nextId = 1;
+  var pending = {};
+
+  worker.onmessage = function (event) {
+    var job = pending[event.data.id];
+    delete pending[event.data.id];
+    if (job) job(event.data);
+  };
+
+  return function highlight(text, language, done) {
+    var id = nextId++;
+    pending[id] = done;
+    worker.postMessage({ id: id, text: text, language: language });
+  };
+})();
+
 
 var haste_document = function() {
   this.locked = false;
@@ -18,39 +39,29 @@ haste_document.prototype.htmlEscape = function(s) {
 // Get this document from the server and lock it here
 haste_document.prototype.load = function(key, callback, lang) {
   var _this = this;
-  $.ajax('/documents/' + key, {
-    type: 'get',
-    dataType: 'json',
-    success: function(res) {
+  fetch('/documents/' + encodeURIComponent(key), {
+    headers: { Accept: 'application/json' }
+  })
+    .then(function(res) {
+      if (!res.ok) throw new Error('request failed');
+      return res.json();
+    })
+    .then(function(res) {
       _this.locked = true;
       _this.key = key;
       _this.data = res.data;
-      try {
-        var high;
-        if (lang === 'txt') {
-          high = { value: _this.htmlEscape(res.data) };
-        }
-        else if (lang) {
-          high = hljs.highlight(lang, res.data);
-        }
-        else {
-          high = hljs.highlightAuto(res.data);
-        }
-      } catch(err) {
-        // failed highlight, fall back on auto
-        high = hljs.highlightAuto(res.data);
-      }
-      callback({
-        value: high.value,
-        key: key,
-        language: high.language || lang,
-        lineCount: res.data.split('\n').length
+      highlighter(res.data, lang, function (high) {
+        callback({
+          value: high.value === null ? _this.htmlEscape(res.data) : high.value,
+          key: key,
+          language: high.language || lang,
+          lineCount: res.data.split('\n').length
+        });
       });
-    },
-    error: function() {
+    })
+    .catch(function() {
       callback(false);
-    }
-  });
+    });
 };
 
 // Save this document to the server and lock it here
@@ -60,47 +71,56 @@ haste_document.prototype.save = function(data, callback) {
   }
   this.data = data;
   var _this = this;
-  $.ajax('/documents', {
-    type: 'post',
-    data: data,
-    dataType: 'json',
-    contentType: 'text/plain; charset=utf-8',
-    success: function(res) {
-      _this.locked = true;
-      _this.key = res.key;
-      var high = hljs.highlightAuto(data);
-      callback(null, {
-        value: high.value,
-        key: res.key,
-        language: high.language,
-        lineCount: data.split('\n').length
-      });
-    },
-    error: function(res) {
-      try {
-        callback($.parseJSON(res.responseText));
-      }
-      catch (e) {
-        callback({message: 'Something went wrong!'});
-      }
+  fetch('/documents', {
+    method: 'post',
+    body: data,
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      Accept: 'application/json'
     }
-  });
+  })
+    .then(function(res) {
+      if (!res.ok) {
+        return res.text().then(function(text) {
+          var parsed;
+          try { parsed = JSON.parse(text); }
+          catch (e) { parsed = { message: 'Something went wrong!' }; }
+          callback(parsed);
+        });
+      }
+      return res.json().then(function (res) {
+        _this.locked = true;
+        _this.key = res.key;
+        highlighter(data, undefined, function (high) {
+          callback(null, {
+            value: high.value === null ? _this.htmlEscape(data) : high.value,
+            key: res.key,
+            language: high.language,
+            lineCount: data.split('\n').length
+          });
+        });
+      });
+    })
+    .catch(function() {
+      callback({ message: 'Something went wrong!' });
+    });
+  return true;
 };
 
 ///// represents the paste application
 
 var haste = function(appName, options) {
   this.appName = appName;
-  this.$textarea = $('textarea');
-  this.$box = $('#box');
-  this.$code = $('#box code');
-  this.$linenos = $('#linenos');
+  this.$textarea = document.querySelector('textarea');
+  this.$box = document.querySelector('#box');
+  this.$code = document.querySelector('#box code');
+  this.$linenos = document.querySelector('#linenos');
   this.options = options;
   this.configureShortcuts();
   this.configureButtons();
   // If twitter is disabled, hide the button
   if (!options.twitter) {
-    $('#box2 .twitter').hide();
+    document.querySelector('#box2 .twitter').style.display = 'none';
   }
 };
 
@@ -112,10 +132,12 @@ haste.prototype.setTitle = function(ext) {
 
 // Show a message box
 haste.prototype.showMessage = function(msg, cls) {
-  var msgBox = $('<li class="'+(cls || 'info')+'">'+msg+'</li>');
-  $('#messages').prepend(msgBox);
+  var msgBox = document.createElement('li');
+  msgBox.className = (cls || 'info');
+  msgBox.textContent = msg;
+  document.querySelector('#messages').prepend(msgBox);
   setTimeout(function() {
-    msgBox.slideUp('fast', function() { $(this).remove(); });
+    msgBox.remove();
   }, 3000);
 };
 
@@ -131,32 +153,32 @@ haste.prototype.fullKey = function() {
 
 // Set the key up for certain things to be enabled
 haste.prototype.configureKey = function(enable) {
-  var $this, i = 0;
-  $('#box2 .function').each(function() {
-    $this = $(this);
-    for (i = 0; i < enable.length; i++) {
-      if ($this.hasClass(enable[i])) {
-        $this.addClass('enabled');
-        return true;
-      }
+  var buttons = document.querySelectorAll('#box2 .function');
+  for (var i = 0; i < buttons.length; i++) {
+    var el = buttons[i];
+    if (enable.some(function(name) { return el.classList.contains(name); })) {
+      el.classList.add('enabled');
     }
-    $this.removeClass('enabled');
-  });
+    else {
+      el.classList.remove('enabled');
+    }
+  }
 };
 
 // Remove the current document (if there is one)
 // and set up for a new one
 haste.prototype.newDocument = function(hideHistory) {
-  this.$box.hide();
+  this.$box.style.display = 'none';
   this.doc = new haste_document();
   if (!hideHistory) {
     window.history.pushState(null, this.appName, '/');
   }
   this.setTitle();
   this.lightKey();
-  this.$textarea.val('').show('fast', function() {
-    this.focus();
-  });
+  var textarea = this.$textarea;
+  textarea.value = '';
+  textarea.style.display = '';
+  textarea.focus();
   this.removeLineNumbers();
 };
 
@@ -195,12 +217,12 @@ haste.prototype.addLineNumbers = function(lineCount) {
   for (var i = 0; i < lineCount; i++) {
     h += (i + 1).toString() + '<br/>';
   }
-  $('#linenos').html(h);
+  this.$linenos.innerHTML = h;
 };
 
 // Remove the line numbers
 haste.prototype.removeLineNumbers = function() {
-  $('#linenos').html('&gt;');
+  this.$linenos.innerHTML = '&gt;';
 };
 
 // Load a document and show it
@@ -212,11 +234,13 @@ haste.prototype.loadDocument = function(key) {
   _this.doc = new haste_document();
   _this.doc.load(parts[0], function(ret) {
     if (ret) {
-      _this.$code.html(ret.value);
+      _this.$code.innerHTML = ret.value;
       _this.setTitle(ret.key);
       _this.fullKey();
-      _this.$textarea.val('').hide();
-      _this.$box.show().focus();
+      _this.$textarea.value = '';
+      _this.$textarea.style.display = 'none';
+      _this.$box.style.display = '';
+      _this.$box.focus();
       _this.addLineNumbers(ret.lineCount);
     }
     else {
@@ -230,19 +254,19 @@ haste.prototype.duplicateDocument = function() {
   if (this.doc.locked) {
     var currentData = this.doc.data;
     this.newDocument();
-    this.$textarea.val(currentData);
+    this.$textarea.value = currentData;
   }
 };
 
 // Lock the current document
 haste.prototype.lockDocument = function() {
   var _this = this;
-  this.doc.save(this.$textarea.val(), function(err, ret) {
+  this.doc.save(this.$textarea.value, function(err, ret) {
     if (err) {
       _this.showMessage(err.message, 'error');
     }
     else if (ret) {
-      _this.$code.html(ret.value);
+      _this.$code.innerHTML = ret.value;
       _this.setTitle(ret.key);
       var file = '/' + ret.key;
       if (ret.language) {
@@ -250,8 +274,10 @@ haste.prototype.lockDocument = function() {
       }
       window.history.pushState(null, _this.appName + '-' + ret.key, file);
       _this.fullKey();
-      _this.$textarea.val('').hide();
-      _this.$box.show().focus();
+      _this.$textarea.value = '';
+      _this.$textarea.style.display = 'none';
+      _this.$box.style.display = '';
+      _this.$box.focus();
       _this.addLineNumbers(ret.lineCount);
     }
   });
@@ -261,20 +287,20 @@ haste.prototype.configureButtons = function() {
   var _this = this;
   this.buttons = [
     {
-      $where: $('#box2 .save'),
+      $where: document.querySelector('#box2 .save'),
       label: 'Save',
       shortcutDescription: 'control + s',
       shortcut: function(evt) {
         return evt.ctrlKey && (evt.keyCode === 83);
       },
       action: function() {
-        if (_this.$textarea.val().replace(/^\s+|\s+$/g, '') !== '') {
+        if (_this.$textarea.value.replace(/^\s+|\s+$/g, '') !== '') {
           _this.lockDocument();
         }
       }
     },
     {
-      $where: $('#box2 .new'),
+      $where: document.querySelector('#box2 .new'),
       label: 'New',
       shortcut: function(evt) {
         return evt.ctrlKey && evt.keyCode === 78;
@@ -285,7 +311,7 @@ haste.prototype.configureButtons = function() {
       }
     },
     {
-      $where: $('#box2 .duplicate'),
+      $where: document.querySelector('#box2 .duplicate'),
       label: 'Duplicate & Edit',
       shortcut: function(evt) {
         return _this.doc.locked && evt.ctrlKey && evt.keyCode === 68;
@@ -296,7 +322,7 @@ haste.prototype.configureButtons = function() {
       }
     },
     {
-      $where: $('#box2 .raw'),
+      $where: document.querySelector('#box2 .raw'),
       label: 'Just Text',
       shortcut: function(evt) {
         return evt.ctrlKey && evt.shiftKey && evt.keyCode === 82;
@@ -307,7 +333,7 @@ haste.prototype.configureButtons = function() {
       }
     },
     {
-      $where: $('#box2 .twitter'),
+      $where: document.querySelector('#box2 .twitter'),
       label: 'Twitter',
       shortcut: function(evt) {
         return _this.options.twitter && _this.doc.locked && evt.shiftKey && evt.ctrlKey && evt.keyCode == 84;
@@ -324,31 +350,34 @@ haste.prototype.configureButtons = function() {
 };
 
 haste.prototype.configureButton = function(options) {
+  var where = options.$where;
   // Handle the click action
-  options.$where.click(function(evt) {
+  where.addEventListener('click', function(evt) {
     evt.preventDefault();
-    if (!options.clickDisabled && $(this).hasClass('enabled')) {
+    if (!options.clickDisabled && where.classList.contains('enabled')) {
       options.action();
     }
   });
   // Show the label
-  options.$where.mouseenter(function() {
-    $('#box3 .label').text(options.label);
-    $('#box3 .shortcut').text(options.shortcutDescription || '');
-    $('#box3').show();
-    $(this).append($('#pointer').remove().show());
+  where.addEventListener('mouseenter', function() {
+    document.querySelector('#box3 .label').textContent = options.label;
+    document.querySelector('#box3 .shortcut').textContent = options.shortcutDescription || '';
+    document.querySelector('#box3').style.display = '';
+    var pointer = document.querySelector('#pointer');
+    pointer.style.display = '';
+    where.append(pointer);
   });
   // Hide the label
-  options.$where.mouseleave(function() {
-    $('#box3').hide();
-    $('#pointer').hide();
+  where.addEventListener('mouseleave', function() {
+    document.querySelector('#box3').style.display = 'none';
+    document.querySelector('#pointer').style.display = 'none';
   });
 };
 
 // Configure keyboard shortcuts for the textarea
 haste.prototype.configureShortcuts = function() {
   var _this = this;
-  $(document.body).keydown(function(evt) {
+  document.body.addEventListener('keydown', function(evt) {
     var button;
     for (var i = 0 ; i < _this.buttons.length; i++) {
       button = _this.buttons[i];
@@ -362,9 +391,9 @@ haste.prototype.configureShortcuts = function() {
 };
 
 ///// Tab behavior in the textarea - 2 spaces per tab
-$(function() {
 
-  $('textarea').keydown(function(evt) {
+var configureTab = function() {
+  document.querySelector('textarea').addEventListener('keydown', function(evt) {
     if (evt.keyCode === 9) {
       evt.preventDefault();
       var myValue = '  ';
@@ -394,5 +423,26 @@ $(function() {
       }
     }
   });
+};
 
+///// boot. This script is loaded in <head>, so the elements it binds only
+///// exist once the document has been parsed.
+
+var app = null;
+
+// Handle pops
+var handlePop = function(target) {
+  var path = target.location.pathname;
+  if (path === '/') { app.newDocument(true); }
+  else { app.loadDocument(path.substring(1, path.length)); }
+};
+
+window.addEventListener('popstate', function(evt) {
+  try { handlePop(evt.target); } catch(err) { /* not loaded yet */ }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  app = new haste('hastebin', { twitter: true });
+  configureTab();
+  handlePop(window);
 });
