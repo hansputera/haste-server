@@ -24,7 +24,7 @@ export default class MongoDocumentStore implements DocumentStore {
     // Only redis takes a pre-built client; every other store builds its own.
     void client;
     this.expire = options.expire;
-    this.connectionUrl = process.env.DATABASE_URl || options.connectionUrl;
+    this.connectionUrl = process.env.DATABASE_URL || options.connectionUrl;
   }
 
   set(key: string, data: string, callback: StoreCallback<boolean>, skipExpire?: boolean): void {
