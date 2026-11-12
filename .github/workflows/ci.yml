@@ -31,6 +31,8 @@ jobs:
       - run: npm run check:config-docs
       - run: npm run format:check
       - run: npm run build
+      - name: node version actually used
+        run: node --version
       - run: npm test
 
   bun:

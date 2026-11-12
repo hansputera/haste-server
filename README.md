@@ -1,5 +1,15 @@
 # Haste
 
+> **This is a fork, not upstream Haste.** It is a modified copy of
+> [seejohnrun/haste-server](https://github.com/seejohnrun/haste-server), the
+> original Haste server written by John Crepezzi. The public hosted service at
+> [hastebin.com](https://hastebin.com) and the `hastebin` project are now owned
+> and operated by [Toptal](https://www.toptal.com); this repository is not
+> affiliated with, endorsed by, or maintained by Toptal. The changes here —
+> TypeScript, Hono, dual Node/Bun runtime, layered configuration — are local to
+> this fork and are not part of upstream Haste. The MIT licence and the original
+> copyright are unchanged; see [License](#license).
+
 Haste is an open-source pastebin software written in node.js, which is easily
 installable in any network. It can be backed by either redis or filesystem,
 and has a very easy adapter interface for other stores. A publicly available
@@ -535,7 +545,12 @@ Here is a list of all the environment variables
 
 ## Author
 
-John Crepezzi <john.crepezzi@gmail.com>
+Original Haste: John Crepezzi <john.crepezzi@gmail.com>
+
+Upstream project: [seejohnrun/haste-server](https://github.com/seejohnrun/haste-server)
+
+This fork: [hansputera/haste-server](https://github.com/hansputera/haste-server)
+(hansputera <hansputera@users.noreply.github.com>)
 
 ## License
 

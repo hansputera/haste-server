@@ -194,16 +194,26 @@ const toPosix = (value: string): string => value.split(path.sep).join('/');
 
 // Walk a directory recursively, returning POSIX paths from the directory root,
 // each prefixed with '/'.
+//
+// Explicit recursion rather than `readdirSync({ recursive: true })`: the
+// `Dirent.parentPath` field that pairs with it only exists from Node 20.12, and
+// this package supports Node 20 generally.
 const walk = (dir: string): string[] => {
-  const entries = fs.readdirSync(dir, { recursive: true, withFileTypes: true });
   const files: string[] = [];
 
-  for (const entry of entries) {
-    if (!entry.isFile()) continue;
-    const parent = entry.parentPath;
-    files.push('/' + toPosix(path.relative(dir, path.join(parent, entry.name))));
-  }
+  const visit = (current: string): void => {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const absolute = path.join(current, entry.name);
 
+      if (entry.isDirectory()) {
+        visit(absolute);
+      } else if (entry.isFile()) {
+        files.push('/' + toPosix(path.relative(dir, absolute)));
+      }
+    }
+  };
+
+  visit(dir);
   return files.sort();
 };
 

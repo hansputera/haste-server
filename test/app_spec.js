@@ -10,6 +10,7 @@ import {
   staticCacheControl,
   buildRateLimiter
 } from '../dist/app.js';
+import { deferred } from '../dist/lib/deferred.js';
 import RandomKeyGenerator from '../dist/lib/key_generators/random.js';
 
 const staticDir = path.join(process.cwd(), 'static');
@@ -203,11 +204,13 @@ describe('buildRateLimiter', () => {
 
     await new Promise((resolve) => limiter(request, fakeResponse(), resolve));
 
+    // The exceed path ends the response instead of calling next, so the test
+    // settles on `end`. Executor form because Node 20 has no withResolvers.
     const response = fakeResponse();
-    const { promise, resolve } = Promise.withResolvers();
-    response.onEnd = resolve;
+    const settled = deferred();
+    response.onEnd = settled.resolve;
     limiter(request, response, () => {});
-    await promise;
+    await settled.promise;
 
     assert.equal(response.statusCode, 429);
     assert.deepEqual(JSON.parse(String(response.ended)), { message: 'Rate limit exceeded.' });

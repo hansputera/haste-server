@@ -4,6 +4,14 @@
   "private": true,
   "type": "module",
   "description": "Private Pastebin Server",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/hansputera/haste-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hansputera/haste-server/issues"
+  },
+  "homepage": "https://github.com/hansputera/haste-server#readme",
   "keywords": [
     "paste",
     "pastebin"
@@ -59,7 +67,7 @@
     "dev": "node --watch --experimental-strip-types src/server.ts",
     "dev:bun": "bun --watch src/server.ts",
     "start:bun": "bun src/server.ts",
-    "test": "npm run build && node --test \"test/**/*_spec.js\"",
+    "test": "npm run build && node scripts/run-tests.mjs",
     "check": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -69,5 +77,6 @@
     "gen:config-docs": "node scripts/gen-config-docs.mjs",
     "check:config-docs": "node scripts/gen-config-docs.mjs --check"
   },
-  "bundleDependencies": []
+  "bundleDependencies": [],
+  "forkOf": "seejohnrun/haste-server"
 }

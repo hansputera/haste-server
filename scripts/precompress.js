@@ -16,15 +16,27 @@ const ROOT = process.cwd();
 const STATIC_DIR = path.join(ROOT, 'static');
 const COMPRESSIBLE = new Set(['.js', '.css', '.html', '.svg', '.json', '.txt', '.map']);
 
-const files = fs.readdirSync(STATIC_DIR, { recursive: true, withFileTypes: true });
+// Explicit recursion: `readdirSync({ recursive: true })` with `Dirent.parentPath`
+// needs Node 20.12, and this script runs on whatever Node the build stage has.
+const collect = (dir) => {
+  const out = [];
+
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const absolute = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) out.push(...collect(absolute));
+    else if (entry.isFile()) out.push(absolute);
+  }
+
+  return out;
+};
+
+const files = collect(STATIC_DIR);
 
 let written = 0;
 let removed = 0;
 
-for (const entry of files) {
-  if (!entry.isFile()) continue;
-
-  const file = path.join(entry.parentPath, entry.name);
+for (const file of files) {
   if (file.endsWith('.gz')) continue;
 
   const target = `${file}.gz`;

@@ -25,6 +25,7 @@ import {
   type StaticIndex
 } from './app.js';
 import { describeResolvedConfig, resolveConfig } from './config.js';
+import { deferred } from './lib/deferred.js';
 import { createLogger, type Logger } from './lib/log.js';
 import type { Config, DocumentStore } from './lib/types.js';
 
@@ -175,7 +176,7 @@ export const createApp = async (configPath?: string): Promise<CreatedApp> => {
 
       let handled = false;
       let responseStatus = 200;
-      const { promise, resolve } = Promise.withResolvers<void>();
+      const { promise, resolve } = deferred<void>();
 
       const response = {
         status(code: number) {
@@ -289,7 +290,7 @@ const readMultipart = async (
   if (!body) return '';
 
   const busboy = Busboy({ headers: { 'content-type': contentType } });
-  const { promise, resolve, reject } = Promise.withResolvers<string>();
+  const { promise, resolve, reject } = deferred<string>();
   let buffer = '';
 
   busboy.on('field', (fieldname: string, value: string) => {
