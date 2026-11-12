@@ -6,7 +6,10 @@ import path from 'node:path';
 
 import {
   buildStaticIndex,
+  createDeferredFileStore,
   createDocumentService,
+  createStore,
+  seedDocuments,
   staticCacheControl,
   buildRateLimiter
 } from '../dist/app.js';
@@ -214,5 +217,51 @@ describe('buildRateLimiter', () => {
 
     assert.equal(response.statusCode, 429);
     assert.deepEqual(JSON.parse(String(response.ended)), { message: 'Rate limit exceeded.' });
+  });
+});
+
+describe('serverless storage', () => {
+  it('should defer constructing the file store until the first read', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'haste-deferred-'));
+    const store = await createStore({ type: 'file', path: dir }, true);
+
+    // Nothing has touched the filesystem yet: this is what makes a runtime
+    // whose filesystem only exists inside an invocation workable.
+    assert.deepEqual(fs.readdirSync(dir), []);
+
+    const stored = await new Promise((resolve) => store.set('abc', 'deferred', resolve));
+    assert.equal(stored, true);
+    assert.deepEqual(fs.readdirSync(dir).length, 1);
+
+    const read = await new Promise((resolve) => store.get('abc', resolve, false));
+    assert.equal(read, 'deferred');
+
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('should answer a miss instead of throwing when the store cannot be built', async () => {
+    const store = createDeferredFileStore({ type: 'no-such-store' });
+    const result = await new Promise((resolve) => store.get('abc', resolve, false));
+    assert.equal(result, false);
+  });
+
+  it('should resolve seeded document paths against the given root', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'haste-seed-'));
+    fs.writeFileSync(path.join(root, 'about.md'), '# seeded', 'utf8');
+
+    const writes = [];
+    const store = {
+      get: () => {},
+      set: (key, data, callback) => {
+        writes.push([key, data]);
+        callback(true);
+      }
+    };
+
+    // The working directory is deliberately unrelated to the root.
+    seedDocuments(store, { about: './about.md' }, undefined, root);
+    assert.deepEqual(writes, [['about', '# seeded']]);
+
+    fs.rmSync(root, { recursive: true, force: true });
   });
 });

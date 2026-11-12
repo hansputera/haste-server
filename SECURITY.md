@@ -23,11 +23,12 @@ leaves the runtime itself unpatched.
 
 ## Deployment notes
 
-- **The `file` store is unsupported on serverless hosting.** Its writes land on a
-  read-only or ephemeral filesystem, so pastes are silently lost. The server
-  refuses to boot with `STORAGE_TYPE=file` when `VERCEL` or `NETLIFY` is set.
-  Configure `redis`, `postgres`, `mongo`, `memcached`, `amazon-s3`,
-  `google-datastore` or `rethinkdb` instead.
+- **The `file` store on serverless hosting is not durable.** Vercel and Netlify
+  give each instance a filesystem that is not mounted at cold start, so a `file`
+  deployment must point `HASTE_STORAGE__PATH` at `/tmp/...` and treats every
+  paste as disposable: it is lost when the instance is recycled. Use `postgres`,
+  `redis`, `mongo`, `memcached`, `amazon-s3`, `google-datastore` or `rethinkdb`
+  when pastes must persist.
 - Rate limiting keys on the peer address (`request.ip`, collapsed to an IPv6 /56
   by `express-rate-limit`). Behind a proxy, make sure the proxy is the one
   enforcing client-address limits you rely on.

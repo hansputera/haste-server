@@ -19,7 +19,7 @@ const log = createLogger();
 // Build the store from config. Stores are loaded on demand so that a missing
 // optional client (redis, memcached, ...) only fails the deployment that
 // actually selects it.
-export const createStore = async (storage: StorageOptions): Promise<DocumentStore> => {
+const buildStore = async (storage: StorageOptions): Promise<DocumentStore> => {
   // The store type is a validated enum member, not free-form input.
   const { default: Store } = await loadModule<{
     default: new (options: StorageOptions, client?: unknown) => DocumentStore;
@@ -44,6 +44,59 @@ export const createStore = async (storage: StorageOptions): Promise<DocumentStor
   return new Store(storage);
 };
 
+// A store whose backend is decided per request rather than at boot.
+//
+// The `file` store is usable on a long-lived Node process but not on a
+// serverless one, and the same image or bundle can be pointed at either. This
+// wrapper keeps the whole app booting on a platform whose filesystem is only
+// writable from *inside* an invocation: Vercel exposes one scratch directory
+// (`/tmp`) that exists during a request and not before it.
+//
+// Construction is deferred to the first `get` or `set`; after that the
+// instance is reused for the life of the process.
+export const createDeferredFileStore = (storage: StorageOptions, storeLog = log): DocumentStore => {
+  let inner: DocumentStore | undefined;
+
+  const resolve = async (): Promise<DocumentStore> => {
+    // The `file` store has no expirations and no in-process state worth
+    // initialising, so construction is memoised and nothing else is needed.
+    inner ??= await buildStore(storage);
+    return inner;
+  };
+
+  return {
+    get(key, callback, skipExpire) {
+      resolve().then(
+        (store) => store.get(key, callback, skipExpire),
+        (error: unknown) => {
+          storeLog.error({ error: String(error) }, 'file store unavailable');
+          callback(false);
+        }
+      );
+    },
+    set(key, data, callback, skipExpire) {
+      resolve().then(
+        (store) => store.set(key, data, callback, skipExpire),
+        (error: unknown) => {
+          storeLog.error({ error: String(error) }, 'file store unavailable');
+          callback(false);
+        }
+      );
+    }
+  };
+};
+
+// Build the store the deployment asked for.
+//
+// On serverless hosting the filesystem exists only inside an invocation, so the
+// `file` store is built on first use instead of at boot; everywhere else it is
+// built eagerly so a bad path fails the rollout, not the first paste.
+export const createStore = async (
+  storage: StorageOptions,
+  serverless = Boolean(process.env.VERCEL || process.env.NETLIFY)
+): Promise<DocumentStore> =>
+  serverless && storage.type === 'file' ? createDeferredFileStore(storage) : buildStore(storage);
+
 // Pick up a key generator
 export const createKeyGenerator = async (
   options: { type?: string } = {}
@@ -56,13 +109,21 @@ export const createKeyGenerator = async (
 };
 
 // Send the static documents into the preferred store, skipping expirations
+//
+// Seed paths are relative to the application, not to the process working
+// directory: a serverless bundle and a `dist`-only install do not run from the
+// directory the paths were authored against. Absolute paths are left alone.
 export const seedDocuments = (
   store: DocumentStore,
   documents: Record<string, string> | undefined,
-  seedLog = log
+  seedLog = log,
+  root = process.cwd()
 ): void => {
   for (const name in documents) {
-    const documentPath = documents[name] as string;
+    const configuredPath = documents[name] as string;
+    const documentPath = path.isAbsolute(configuredPath)
+      ? configuredPath
+      : path.resolve(root, configuredPath);
     let data: string | null;
 
     seedLog.info({ name, path: documentPath }, 'loading static document');

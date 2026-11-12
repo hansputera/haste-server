@@ -436,22 +436,31 @@ store writes to `./data`, so mount a volume owned by uid 1000 or point
 ### Vercel
 
 `vercel.json` routes every request to `api/index.ts`, which delegates to
-`@hono/vercel`'s Node handler and bundles `static/**`. The build command is
-`npm run build`, because the handler imports `dist/http.js`. Set the storage
-environment variables in the project settings; **the file store is refused on
-Vercel**, because the filesystem is read-only and ephemeral.
+`@hono/vercel`'s Node handler, imports `dist/http.js` and ships `static/`,
+`openapi.json` and `about.md` through `includeFiles`. The build command is
+`npm run build`. `.nvmrc` pins Node 24, because Vercel's default (20) is below
+the package's floor.
+
+Set `HASTE_CONFIG=` (empty) so configuration comes from the environment only,
+and pick a store: `file` works but is **not durable** — it needs
+`HASTE_STORAGE__PATH=/tmp/…` and loses pastes when the instance is recycled. Use
+`postgres` (the only store whose client is already a dependency) for anything
+that must persist. Full walkthrough, including the Postgres schema:
+[`docs/deployment.md`](docs/deployment.md).
 
 ### Netlify
 
 `netlify.toml` redirects every request to `netlify/functions/server.ts`, which
 delegates to `@hono/netlify`'s Web `Request`/`Response` handler. The build command
-is `npm run build` for the same reason. **The file store is refused on Netlify**
-for the same reason.
+is `npm run build` for the same reason. The `file` store works there but is not
+durable; see [`docs/deployment.md`](docs/deployment.md).
 
 ### Serverless storage
 
-Use `redis`, `postgres`, `mongo`, `memcached`, `amazon-s3`,
-`google-datastore` or `rethinkdb`. For Postgres, point `DATABASE_URL` at your
+A serverless filesystem lives only inside an invocation, so `file` there means
+a disposable pastebin. Use `redis`, `postgres`, `mongo`, `memcached`,
+`amazon-s3`, `google-datastore` or `rethinkdb` when pastes must persist.
+For Postgres, point `DATABASE_URL` at your
 provider's pooled endpoint (for example with `?pgbouncer=true`) since each
 invocation may open a connection. The pool is created lazily, so an unset or
 invalid URL only fails on the first query.

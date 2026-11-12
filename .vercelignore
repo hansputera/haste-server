@@ -1,0 +1,28 @@
+# Vercel uploads everything the function might need; `includeFiles` in
+# vercel.json narrows the bundle to `dist/`, `static/`, `openapi.json` and
+# `about.md`. Everything listed here exists only to build, test or operate the
+# project elsewhere.
+#
+# `about.md` is deliberately *not* listed: it is seeded into the store at boot.
+# (A `*.md` ignore with a `!about.md` negation does not work — Vercel keeps the
+# first pattern that matches.)
+.git
+.github
+.commandcode
+docs
+test
+netlify
+data
+CONTRIBUTING.md
+SECURITY.md
+CODE_OF_CONDUCT.md
+CHANGELOG.md
+README.md
+Dockerfile
+docker-compose.yaml
+docker-compose.override.yml
+Procfile
+eslint.config.js
+tsconfig.eslint.json
+release-please-config.json
+.release-please-manifest.json

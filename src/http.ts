@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
+import { fileURLToPath } from 'node:url';
 
 import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
@@ -38,6 +39,11 @@ import type { Config, DocumentStore } from './lib/types.js';
 // `/healthz` to `index.html`; `serveStatic` comes last.
 
 const ROOT = new URL('../static/', import.meta.url).pathname;
+// The directory the installed package is unpacked into (`dist/..`). Seeded
+// documents are named relative to it, so they resolve the same from a source
+// checkout, a `dist`-only function bundle, or a global npm install — none of
+// which share a working directory.
+const APP_ROOT = fileURLToPath(new URL('..', import.meta.url));
 // `serveStatic({ path })` requires an absolute path: a relative one (or a bare
 // '/') is passed through untouched by the middleware.
 const INDEX_FILE = join(ROOT, 'index.html');
@@ -68,18 +74,13 @@ export const createApp = async (configPath?: string): Promise<CreatedApp> => {
   // already redacted. This is the record an operator reads after a rollout.
   log.info(describeResolvedConfig(resolved), 'config resolved');
 
-  // A serverless filesystem is read-only and ephemeral, so the file store would
-  // accept writes and silently lose every paste. Refuse at boot with an
-  // actionable message rather than running with data loss.
-  if ((process.env.VERCEL || process.env.NETLIFY) && config.storage.type === 'file') {
-    throw new Error(
-      'file storage is not available on serverless hosting; configure redis, ' +
-        'postgres, mongo, memcached, s3, google-datastore or rethinkdb'
-    );
-  }
-
+  // A serverless filesystem is only writable inside an invocation. The `file`
+  // store is therefore constructed on first use there (`createStore` defers it),
+  // and where it points is a deployment decision: Vercel exposes `/tmp`, which
+  // outlives the typical paste but not the function. Running it on the
+  // repository root instead would silently discard every write.
   const store = await createStore(config.storage);
-  seedDocuments(store, config.documents, log);
+  seedDocuments(store, config.documents, log, APP_ROOT);
 
   const keyGenerator = await createKeyGenerator(config.keyGenerator);
   const service = createDocumentService(store, config, keyGenerator, log);
@@ -277,6 +278,18 @@ export const createApp = async (configPath?: string): Promise<CreatedApp> => {
       ready = value;
     }
   };
+};
+
+// Build the app for a serverless host.
+//
+// A function runtime owns its own lifecycle: nothing calls `setReady`, no
+// listener is installed and no signal handlers are registered. Without this the
+// readiness probe would answer 503 for the life of every instance, which is
+// exactly what a platform health check reads as "not deployed".
+export const prepareForServerless = async (configPath?: string): Promise<CreatedApp> => {
+  const created = await createApp(configPath);
+  created.setReady(true);
+  return created;
 };
 
 // Read the paste payload from a multipart body.

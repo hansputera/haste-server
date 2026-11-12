@@ -108,7 +108,8 @@ export const CONFIG_FIELDS: readonly FieldDefinition[] = [
     defaultValue: 'file',
     env: envName('storage.type'),
     legacyEnv: ['STORAGE_TYPE'],
-    summary: 'Document store backend. `file` is refused on serverless hosts.'
+    summary:
+      'Document store backend. On serverless hosts `file` needs an explicit `/tmp` path and does not persist.'
   },
   {
     path: 'storage.path',
