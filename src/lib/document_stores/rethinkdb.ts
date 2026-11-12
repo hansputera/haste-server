@@ -1,20 +1,34 @@
 import crypto from 'node:crypto';
 
+import { deferred } from '../deferred.js';
 import log from '../log.js';
 import { loadModule } from '../optional-client.js';
 import type { DocumentStore, StorageOptions, StoreCallback } from '../types.js';
 
-// Minimal structural view of rethinkdbdash, which is an optional client only
-// installed by deployments that select this store.
-interface ReQLQuery {
-  run(): Promise<unknown>;
+// Minimal structural view of the official `rethinkdb` driver, which is an
+// optional client only installed by deployments that select this store.
+//
+// The previous implementation used `rethinkdbdash`, which has had no release
+// since 2022 and is not maintained by the RethinkDB project.
+interface ReQLCursor<T> extends AsyncIterable<T> {
+  toArray(): Promise<T[]>;
+}
+interface ReQLQuery<T> {
+  run(connection: ReQLConnection): Promise<ReQLCursor<T> | T>;
 }
 interface ReQLTable {
-  insert(document: unknown): ReQLQuery;
-  get(id: string): ReQLQuery;
+  insert(document: unknown): ReQLQuery<unknown>;
+  get(id: string): ReQLQuery<{ data?: string } | null>;
 }
-interface ReQLClient {
+interface ReQLConnection {
+  close(callback?: (error?: Error) => void): void;
   table(name: string): ReQLTable;
+}
+interface ReQLModule {
+  connect(
+    options: unknown,
+    callback: (error: Error | null, connection: ReQLConnection) => void
+  ): void;
 }
 
 const md5 = (str: string): string => {
@@ -23,48 +37,65 @@ const md5 = (str: string): string => {
   return md5sum.digest('hex');
 };
 
-// rethinkdbdash is imported lazily: a deployment that does not select this
-// store never needs the package installed.
+// `rethinkdb` is imported lazily: a deployment that does not select this store
+// never needs the package installed.
 export default class RethinkDBStore implements DocumentStore {
   private readonly options: StorageOptions;
-  private clientPromise: Promise<ReQLClient> | null = null;
+  private connectionPromise: Promise<ReQLConnection> | null = null;
 
   constructor(options: StorageOptions, client?: unknown) {
     // Only redis takes a pre-built client; every other store builds its own.
     void client;
     this.options = options;
-    this.clientPromise = null;
+    this.connectionPromise = null;
   }
 
-  client(): Promise<ReQLClient> {
-    if (!this.clientPromise) {
+  connection(): Promise<ReQLConnection> {
+    if (!this.connectionPromise) {
       const options = this.options;
 
-      this.clientPromise = loadModule<{
-        default: (options: unknown) => ReQLClient;
-      }>('rethinkdbdash', import.meta.url).then(({ default: rethink }) =>
-        rethink({
-          silent: true,
-          host: options.host || '127.0.0.1',
-          port: options.port || 28015,
-          db: options.db || 'haste',
-          user: options.user || 'admin',
-          password: options.password || ''
-        })
-      );
+      this.connectionPromise = loadModule<{ default?: ReQLModule } & ReQLModule>(
+        'rethinkdb',
+        import.meta.url
+      ).then((module) => {
+        // The driver is CommonJS: the namespace's `default` carries `connect`.
+        const rethink: ReQLModule = module.default ?? module;
+
+        const { promise, resolve, reject } = deferred<ReQLConnection>();
+        rethink.connect(
+          {
+            host: options.host || '127.0.0.1',
+            port: Number(options.port) || 28015,
+            db: options.db || 'haste',
+            user: options.user || 'admin',
+            password: options.password || ''
+          },
+          (error, connection) => (error ? reject(error) : resolve(connection))
+        );
+        return promise;
+      });
     }
-    return this.clientPromise;
+    return this.connectionPromise;
+  }
+
+  // The driver returns a cursor for a table query; a point get returns the row.
+  private static firstRow<T>(result: ReQLCursor<T> | T): Promise<T | null> {
+    if (result && typeof (result as ReQLCursor<T>).toArray === 'function') {
+      return (result as ReQLCursor<T>).toArray().then((rows) => rows[0] ?? null);
+    }
+    return Promise.resolve((result as T) ?? null);
   }
 
   set(key: string, data: string, callback: StoreCallback<boolean>): void {
-    this.client()
-      .then((client) =>
-        client
+    this.connection()
+      .then(async (connection) => {
+        const result = await connection
           .table('uploads')
           .insert({ id: md5(key), data })
-          .run()
-      )
-      .then(() => callback(true))
+          .run(connection);
+        await RethinkDBStore.firstRow(result);
+        callback(true);
+      })
       .catch((error: unknown) => {
         log.error({ error: String(error) }, 'failed to insert to table');
         callback(false);
@@ -72,12 +103,12 @@ export default class RethinkDBStore implements DocumentStore {
   }
 
   get(key: string, callback: StoreCallback<string | false>): void {
-    this.client()
-      .then((client) => client.table('uploads').get(md5(key)).run())
-      .then((result) => {
-        const row = result as { data: string } | null;
-        if (!row) return callback(false);
-        callback(row.data);
+    this.connection()
+      .then(async (connection) => {
+        const result = await connection.table('uploads').get(md5(key)).run(connection);
+        const row = await RethinkDBStore.firstRow(result);
+
+        callback(row?.data ? row.data : false);
       })
       .catch((error: unknown) => {
         log.error({ error: String(error) }, 'failed to read from table');

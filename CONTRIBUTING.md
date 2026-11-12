@@ -2,7 +2,8 @@
 
 ## Prerequisites
 
-- Node.js ≥ 20, **or** Bun ≥ 1.4 (both are supported at runtime and in CI).
+- Node.js **≥ 22** (24 LTS and 26 LTS are tested), **or** Bun ≥ 1.4. Node 20 is
+  end-of-life and unsupported.
 - npm ≥ 10.
 
 ## Setup

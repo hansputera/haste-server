@@ -19,7 +19,7 @@ through their own loader.
 ## Decision
 
 - Sources live in `src/`, are TypeScript, and compile to ESM in `dist/` with
-  `tsc` only. `target: ES2022`, `module: NodeNext`, `moduleResolution: NodeNext`,
+  `tsc` only. `target: ES2024`, `module: NodeNext`, `moduleResolution: NodeNext`,
   `strict`, `noUncheckedIndexedAccess`, `verbatimModuleSyntax`.
 - No bundler, no `tsx`, no `esbuild` for the server. Node runs `dist/`; Bun runs
   `src/` directly; tests run against `dist/` after a build.

@@ -36,7 +36,7 @@ Any current browser: the client is plain DOM and `fetch`, with no framework.
 
 ## Requirements
 
-Node.js 20 or newer, **or** Bun 1.4 or newer. Node runs the compiled output in
+Node.js **22 or newer** (24 and 26 LTS are tested), **or** Bun 1.4 or newer. Node runs the compiled output in
 `dist/`; Bun runs the TypeScript sources directly. The package is ESM
 (`"type": "module"`).
 
@@ -321,9 +321,12 @@ All of which are optional except `type` with very logical default values.
 
 ### RethinkDB
 
-To use the RethinkDB storage system, you must install the `rethinkdbdash` package via npm
+To use the RethinkDB storage system, install the official `rethinkdb` driver:
 
-`npm install rethinkdbdash`
+`npm install rethinkdb`
+
+The previous `rethinkdbdash` client has had no release since 2022 and is no
+longer used.
 
 Once you've done that, your config section should look like this:
 
@@ -360,9 +363,11 @@ Authentication is handled automatically by [Google Cloud service account credent
 ### Amazon S3
 
 To use [Amazon S3](https://aws.amazon.com/s3/) as a storage system, you must
-install the `aws-sdk` package via npm:
+install the AWS SDK for JavaScript v3:
 
-`npm install aws-sdk`
+`npm install @aws-sdk/client-s3`
+
+The v2 `aws-sdk` package reached end-of-support and is no longer used.
 
 Once you've done that, your config section should look like this:
 
@@ -460,7 +465,7 @@ the declared dependencies (`hono`, `@hono/node-server`, `@hono/vercel`,
 `@hono/netlify`, `busboy`, `express-rate-limit`, `pino`, `pg`), so add your client:
 
 ```bash
-npm install redis        # or memcached, mongodb, aws-sdk, @google-cloud/datastore, rethinkdbdash
+npm install redis        # or memcached, mongodb, @aws-sdk/client-s3, @google-cloud/datastore, rethinkdb
 ```
 
 ## Docker

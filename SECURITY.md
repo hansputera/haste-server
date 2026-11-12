@@ -6,8 +6,8 @@ The latest minor release receives security fixes. Older minors do not.
 
 ## Reporting a vulnerability
 
-Email **security@example.com**, or use GitHub's private vulnerability reporting
-on this repository. Do not open a public issue.
+Email **personal@hanifu.id**, or use GitHub's private vulnerability reporting on
+this repository. Do not open a public issue.
 
 Include the version, what you sent, and what happened. A proof of concept helps
 but is not required.
@@ -15,8 +15,11 @@ but is not required.
 We aim to acknowledge within **7 days** and to ship a fix or a mitigation plan
 within 30 days for anything rated high or critical.
 
-> The address above is a placeholder. Replace it with a monitored address before
-> the first public release; see `docs/adr/0004-serverless-storage.md`.
+## Supported runtimes
+
+Node.js **22 or newer**. Node 20 reached end-of-life on 2026-04-30 and is not
+supported: no security fixes are backported to it, so running this server there
+leaves the runtime itself unpatched.
 
 ## Deployment notes
 

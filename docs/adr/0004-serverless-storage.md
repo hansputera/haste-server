@@ -35,7 +35,6 @@ the user has already copied the link.
 - `netlify.toml` must declare `external_node_modules` for the packages the
   function bundles, since the `node_bundler` cannot see into `dist/`'s runtime
   imports.
-- The security contact in `SECURITY.md` is a placeholder
-  (`security@example.com`). It must be replaced with a monitored address before
-  the first public release; an unreplaced placeholder is a documentation defect,
-  not a build failure.
+- Reporting is closed over a single address, `personal@hanifu.id`, in
+  `SECURITY.md`. That mailbox is the whole disclosure path: if it is not
+  monitored, reports are silently dropped.

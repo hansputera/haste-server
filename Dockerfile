@@ -1,11 +1,11 @@
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 COPY package*.json tsconfig.json ./
 RUN npm ci
 COPY . .
 RUN npm run build && npm prune --omit=dev
 
-FROM node:22-alpine AS runtime
+FROM node:24-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build /app/package*.json ./
@@ -17,7 +17,7 @@ COPY --from=build /app/docker-entrypoint.sh ./
 
 # The optional store clients are installed here so the image can run any store;
 # the package itself imports each one lazily, so a bare `npm install` does not.
-RUN npm install --no-save @google-cloud/datastore mongodb memcached redis aws-sdk rethinkdbdash
+RUN npm install --no-save @aws-sdk/client-s3 @google-cloud/datastore mongodb memcached redis rethinkdb
 
 ENV STORAGE_TYPE=memcached \
     STORAGE_HOST=127.0.0.1 \

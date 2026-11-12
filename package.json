@@ -23,7 +23,7 @@
   },
   "main": "dist/server.js",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "dependencies": {
     "@hono/netlify": "^1.0.2",
@@ -40,7 +40,7 @@
     "@commitlint/config-conventional": "^21.2.4",
     "@eslint/js": "^10.0.1",
     "@types/busboy": "^1.5.4",
-    "@types/node": "^22.19.0",
+    "@types/node": "^26.6.6",
     "@types/pg": "^8.15.6",
     "eslint": "^10.14.0",
     "prettier": "^3.10.1",
@@ -75,7 +75,9 @@
     "check:openapi": "node scripts/check-openapi.mjs",
     "commitlint": "commitlint --edit",
     "gen:config-docs": "node scripts/gen-config-docs.mjs",
-    "check:config-docs": "node scripts/gen-config-docs.mjs --check"
+    "check:config-docs": "node scripts/gen-config-docs.mjs --check",
+    "gen:highlight": "node scripts/build-highlight.js",
+    "check:highlight": "node scripts/build-highlight.js --check"
   },
   "bundleDependencies": [],
   "forkOf": "seejohnrun/haste-server"
