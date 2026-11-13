@@ -84,10 +84,19 @@ version.
 
 ### 4. Build and files
 
-Set the project's **Root Directory** to `packages/api` in the dashboard. The
-repository is a pnpm workspace, so `vercel.json`, `api/index.ts` and the static
-output all live in that package; with the root left at the repository root,
-Vercel finds no `api/` function and the deploy fails loudly.
+Set the project's **Root Directory** to `packages/api` in the dashboard. This is
+not optional and it cannot be expressed in the repository: Vercel only turns
+files in the _project root's_ `api/` directory into functions, and the
+repository root has no `api/`. Left unset, the build fails with:
+
+```
+[BUILD_FAILED] No entrypoint found in "/vercel/path0"
+```
+
+`/vercel/path0` is the repository root, found no `vercel.json` (it lives in the
+package) and fell back to zero-config detection. A root `vercel.json` cannot
+fix this — its `functions` entry has to be `api/index.ts` relative to the
+project root, so the setting and the config that depends on it move together.
 
 `packages/api/vercel.json` already declares everything:
 

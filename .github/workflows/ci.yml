@@ -62,7 +62,11 @@ jobs:
       - run: pnpm run build
       - name: bun smoke test
         run: |
-          PORT=7779 HOST=127.0.0.1 bun packages/api/src/server.ts &
+          # The server resolves its default config (`config.js`), `static/` and
+          # `about.md` from the package root, so it runs from there — the same
+          # directory `bun src/server.ts` used before the workspace split.
+          cd packages/api
+          PORT=7779 HOST=127.0.0.1 bun src/server.ts &
           server=$!
           for _ in $(seq 1 50); do
             if curl -sf http://127.0.0.1:7779/healthz | grep -q '"status":"ok"'; then
