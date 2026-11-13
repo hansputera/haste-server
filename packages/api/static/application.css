@@ -186,26 +186,36 @@ textarea {
 
 /* The recommendation banner, above the editor. Dismissed once per browser; the
    button stays regardless, so the entry point is never lost. */
+/* The v2 recommendation, inside v1's own header block rather than above it.
+   A separate full-width bar read as a second header competing with the logo,
+   and it covered the fixed `#key` block on narrow screens where the text wraps.
+   `#key` is `position: fixed; top: 0; right: 0`, so this sits above the logo
+   inside that same box and pushes nothing else around. */
 #v2-banner {
-	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	z-index: 10;
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	justify-content: center;
-	gap: 12px;
-	padding: 10px 48px;
+	gap: 4px 10px;
+	padding: 8px 12px;
 	background: #073642;
 	border-bottom: 1px solid #586e75;
-	font-size: 13px;
-	color: #eee8d5;
+	font-size: 12px;
+	line-height: 1.4;
+	color: #93a1a1;
+	max-width: 320px;
+	margin-left: auto;
+}
+
+#v2-banner span {
+	flex: 1 1 200px;
+	text-align: center;
 }
 
 #v2-banner a {
 	color: #b58900;
 	font-weight: 600;
+	white-space: nowrap;
 }
 
 #v2-banner a:hover {
@@ -213,27 +223,23 @@ textarea {
 }
 
 #v2-banner button {
-	position: absolute;
-	right: 14px;
-	top: 50%;
-	transform: translateY(-50%);
 	background: none;
 	border: 0;
 	color: #93a1a1;
-	font-size: 18px;
+	font-size: 16px;
 	line-height: 1;
 	cursor: pointer;
-	padding: 4px 8px;
+	padding: 0 4px;
 }
 
 #v2-banner button:hover {
 	color: #eee8d5;
 }
 
-/* The banner occupies the top strip; push the editor by its height. */
-body.has-v2-banner #key {
-	top: 40px;
+#v2-banner[hidden] {
+	display: none;
 }
+
 
 #messages {
 	position:fixed;

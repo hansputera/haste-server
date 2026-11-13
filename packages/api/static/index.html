@@ -14,16 +14,18 @@
 	</head>
 
 	<body>
-		<div id="v2-banner" hidden>
-			<span>Haste v2 is here — titles, secret passphrases and one-time links.</span>
-			<a href="/v2">Try it</a>
-			<button type="button" aria-label="Dismiss">&times;</button>
-		</div>
-
 		<ul id="messages"></ul>
 
 		<div id="key">
 		  <div id="pointer" style="display:none;"></div>
+			<!-- Inside the header block, not above it: #key is fixed to the top
+			     right, so a separate bar would be a second header competing with
+			     the logo and would cover it once the text wrapped. -->
+			<div id="v2-banner" hidden>
+				<span>Haste v2 is here — titles, secret passphrases and one-time links.</span>
+				<a href="/v2">Try it</a>
+				<button type="button" aria-label="Dismiss">&times;</button>
+			</div>
 			<div id="box1">
 				<a href="/about.md" class="logo"></a>
 			</div>

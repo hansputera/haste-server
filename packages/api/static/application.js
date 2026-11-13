@@ -457,12 +457,9 @@ var configureV2Banner = function() {
   if (dismissed) { return; }
 
   banner.hidden = false;
-  // The banner is fixed above the editor, so the toolbar has to move down.
-  document.body.classList.add('has-v2-banner');
 
   banner.querySelector('button').addEventListener('click', function() {
     banner.hidden = true;
-    document.body.classList.remove('has-v2-banner');
     try { window.localStorage.setItem(V2_BANNER_DISMISSED, '1'); }
     catch (err) { /* nothing to persist to */ }
   });
