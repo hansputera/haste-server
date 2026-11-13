@@ -35,6 +35,8 @@ jobs:
       # emitted yet.
       - run: pnpm run build
       - run: pnpm run lint
+      # The serverless entrypoints import dist/, so this runs after the build.
+      - run: pnpm run check:deploy
       - run: pnpm run check:config-docs
       - run: pnpm run check:highlight
       - run: pnpm run format:check

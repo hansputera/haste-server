@@ -27,7 +27,6 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.1.8",
-    "@hono/vercel": "^1.0.1",
     "busboy": "^1.6.0",
     "express-rate-limit": "^8.7.4",
     "hono": "^4.13.18",
@@ -76,7 +75,8 @@
     "gen:config-docs": "node scripts/gen-config-docs.mjs",
     "check:config-docs": "node scripts/gen-config-docs.mjs --check",
     "gen:highlight": "node scripts/build-highlight.js",
-    "check:highlight": "node scripts/build-highlight.js --check"
+    "check:highlight": "node scripts/build-highlight.js --check",
+    "check:deploy": "tsc --noEmit -p tsconfig.deploy.json"
   },
   "bundleDependencies": [],
   "forkOf": "seejohnrun/haste-server",
