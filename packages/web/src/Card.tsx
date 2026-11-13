@@ -47,25 +47,32 @@ function WindowControls(): ReactElement {
 }
 
 export function Card({ title, language, code, fallbackTitle }: CardProps): ReactElement {
-  const html = useHighlighted(code, language);
-
   const lines = code.split('\n');
   const shown = lines.slice(0, MAX_PREVIEW_LINES);
   const truncated = lines.length > MAX_PREVIEW_LINES;
 
+  // Highlighted from what is displayed, not from the whole paste: a 2000-line
+  // paste would otherwise pay to tokenise every line and then show forty.
+  const preview = shown.join('\n');
+  const html = useHighlighted(preview, language);
+
   return (
     <div className="carbon">
       <div className="carbon-window" aria-label={title || fallbackTitle} data-testid="v2-card">
+        {/* Siblings, not nested: the dots sit 14px inside the window, while
+            Carbon centres the title across the whole window. Nesting the title
+            in the strip gave it the strip's 54px width to lay out in, so
+            `left/right: 70px` collapsed it to nothing and the title vanished. */}
         <div className="carbon-controls">
           <WindowControls />
-          {title ? <div className="carbon-title">{title}</div> : null}
         </div>
+        {title ? <div className="carbon-title">{title}</div> : null}
         <div className="carbon-body">
           <pre className="carbon-code">
             <code
               // Shiki returns escaped, self-contained HTML; the plain-text path
               // is escaped by `highlightMarkup` before it reaches here.
-              dangerouslySetInnerHTML={{ __html: highlightMarkup(html, shown.join('\n')) }}
+              dangerouslySetInnerHTML={{ __html: highlightMarkup(html, preview) }}
             />
           </pre>
           {truncated ? (

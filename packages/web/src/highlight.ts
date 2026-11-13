@@ -15,11 +15,18 @@ const escapeHtml = (value: string): string =>
 let nextId = 1;
 
 /**
- * Highlighted markup for `code`, or `null` while the worker is still working or
- * when the language has no grammar.
+ * Highlighted markup for `code`, or `null` while the worker is still working,
+ * when the language has no grammar, or when the answer on hand is for different
+ * text.
+ *
+ * The markup is stored with the text it was produced from, and only returned
+ * while that text is still current. Without this the previous paste's markup
+ * outlives its input: deleting a character kept showing the old text until the
+ * worker replied, and emptying the editor left the whole previous paste on the
+ * card.
  */
 export const useHighlighted = (code: string, language: string): string | null => {
-  const [html, setHtml] = useState<string | null>(null);
+  const [rendered, setRendered] = useState<{ forCode: string; html: string | null } | null>(null);
   const workerRef = useRef<Worker | null>(null);
 
   useEffect(() => {
@@ -32,9 +39,13 @@ export const useHighlighted = (code: string, language: string): string | null =>
 
     const onMessage = (event: MessageEvent<WorkerResponse | WorkerFailure>): void => {
       if (event.data.id !== id) return;
-      // A failure is reported as `null` markup: the card then renders escaped
-      // text, which is a readable paste rather than a blank one.
-      setHtml('value' in event.data ? event.data.value : null);
+      // A failure is recorded as `null` markup and read as plain text: the card
+      // then renders escaped text, which is a readable paste rather than a
+      // blank one.
+      setRendered({
+        forCode: code,
+        html: 'value' in event.data ? event.data.value : null
+      });
     };
 
     worker.addEventListener('message', onMessage);
@@ -59,7 +70,9 @@ export const useHighlighted = (code: string, language: string): string | null =>
     return () => window.removeEventListener('pagehide', onUnload);
   }, []);
 
-  return html;
+  // Stale markup is worse than none: `highlightMarkup` falls back to escaped
+  // text, which always matches the editor.
+  return rendered?.forCode === code ? rendered.html : null;
 };
 
 /**
