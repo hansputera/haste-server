@@ -435,12 +435,14 @@ store writes to `./data`, so mount a volume owned by uid 1000 or point
 
 ### Vercel
 
-Vercel's project **Root Directory** must be `packages/api`: that is where
-`vercel.json` and `api/index.ts` live. The config routes every request to
-`api/index.ts`, which delegates to `@hono/vercel`'s Node handler, imports
-`dist/http.js` and ships `static/`, `openapi.json`, `about.md` and the resvg wasm
-binary through `includeFiles`. The build command is `pnpm run build`, which
-builds the workspace from its root. `.nvmrc` pins Node 24, because Vercel's
+Deploy with the project's **Root Directory** left at the repository root, which
+is the default. `vercel.json` and `api/index.ts` live there: Vercel only turns
+files in the project root's `api/` directory into functions, so an entry inside
+`packages/api` would be invisible and the build would fail with
+`[BUILD_FAILED] No entrypoint found in "/vercel/path0"`. The root entry is a thin
+adaptor over the compiled package and ships `packages/api/static`,
+`openapi.json`, `about.md` and the resvg wasm binary through `includeFiles`; the
+build command builds both packages. `.nvmrc` pins Node 24, because Vercel's
 default (20) is below the package's floor.
 
 Set `HASTE_CONFIG=` (empty) so configuration comes from the environment only,

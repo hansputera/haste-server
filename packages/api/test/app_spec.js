@@ -307,32 +307,65 @@ describe('bundled deployment', () => {
   });
 
   it('should keep vercel.json to properties Vercel accepts together', () => {
-    const config = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'vercel.json'), 'utf8'));
+    // The config lives at the repository root because that is the project root
+    // Vercel uses unless someone changes Root Directory in the dashboard, and a
+    // config it cannot see is a config that does nothing: with none at the root
+    // Vercel falls back to zero-config detection and fails the build with
+    // `[BUILD_FAILED] No entrypoint found in "/vercel/path0"`.
+    const repoRoot = path.join(process.cwd(), '..', '..');
+    const config = JSON.parse(fs.readFileSync(path.join(repoRoot, 'vercel.json'), 'utf8'));
 
-    // Without this, Vercel auto-detects a Node server and runs src/server.ts,
-    // which needs config.js and binds a port. `null` selects "Other".
+    // Vercel derives functions from the *project root's* `api/` directory, so
+    // the entry has to be there. Without `framework: null` it also auto-detects
+    // a Node server and runs src/server.ts, which needs config.js and binds a
+    // port.
     assert.equal(
       config.framework,
       null,
       'vercel.json must set "framework": null so api/index.ts is the only entry'
     );
+    assert.ok(
+      fs.existsSync(path.join(repoRoot, 'api', 'index.ts')),
+      'Vercel only finds functions in the project-root api/ directory'
+    );
+    assert.ok(
+      !fs.existsSync(path.join(repoRoot, 'packages', 'api', 'vercel.json')),
+      'a second vercel.json in the package would drift from the one Vercel reads'
+    );
 
     // With no framework, Vercel still requires a static output directory and
     // defaults to "public", which this project does not have:
     // `[STATIC_BUILD_NO_OUT_DIR] No Output Directory named "public" found`.
-    // `static/` is that directory — the files are served from the CDN and
-    // everything else falls through to the function.
-    assert.equal(config.outputDirectory, 'static');
+    assert.equal(config.outputDirectory, 'packages/api/static');
     assert.ok(
-      fs.existsSync(path.join(process.cwd(), 'static', 'index.html')),
+      fs.existsSync(path.join(repoRoot, config.outputDirectory, 'index.html')),
       'outputDirectory must contain index.html'
+    );
+
+    // Every file the function needs at runtime is named here; a missing entry
+    // is a 404 for that path on the deployed site, not a build error.
+    const includeFiles = config.functions['api/index.ts'].includeFiles;
+    for (const needed of [
+      'packages/api/static',
+      'packages/api/openapi.json',
+      'packages/api/about.md'
+    ]) {
+      assert.ok(includeFiles.includes(needed), `includeFiles must ship ${needed}`);
+      assert.ok(
+        fs.existsSync(path.join(repoRoot, needed)),
+        `includeFiles names ${needed}, which does not exist`
+      );
+    }
+    assert.ok(
+      includeFiles.includes('@resvg/resvg-wasm/index_bg.wasm'),
+      'the OG card needs its wasm binary beside the function'
     );
 
     // Filesystem beats rewrites, so a static file at an API path would shadow
     // the function entirely.
     for (const reserved of ['documents', 'raw', 'healthz', 'readyz', 'openapi.json']) {
       assert.ok(
-        !fs.existsSync(path.join(process.cwd(), 'static', reserved)),
+        !fs.existsSync(path.join(repoRoot, 'packages', 'api', 'static', reserved)),
         `static/${reserved} would shadow the function route`
       );
     }
@@ -355,6 +388,9 @@ describe('bundled deployment', () => {
     for (const rule of config.rewrites ?? []) {
       assert.equal(rule.destination, '/api/index');
     }
+
+    // The SPA is a build artefact, so the build command has to produce it.
+    assert.match(config.buildCommand, /@haste\/web build/);
   });
 
   it('should boot a serverless app with no config file present', async () => {

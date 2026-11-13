@@ -37,6 +37,23 @@ export default tseslint.config(
     }
   },
   {
+    // The repository-root Vercel entry. It mirrors `packages/api/api/index.ts`,
+    // which the type-aware project above already checks, and no tsconfig spans
+    // both the package and the repository root — the package's projects are
+    // `rootDir: "."`-relative and cannot reach up. Linting it untyped keeps the
+    // rules that do not need types (no-console, eqeqeq) without inventing a
+    // project purely to satisfy a thirty-line shim.
+    files: ['api/**/*.ts'],
+    languageOptions: {
+      parserOptions: { project: false, sourceType: 'module' }
+    },
+    rules: {
+      ...tseslint.configs.disableTypeChecked.rules,
+      eqeqeq: ['error', 'always'],
+      'prefer-const': 'error'
+    }
+  },
+  {
     // The frontend runs in a browser, where `console` is the only diagnostic
     // channel a user can read.
     files: ['packages/web/src/**/*.{ts,tsx}', 'packages/web/vite.config.ts'],

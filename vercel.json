@@ -2,11 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "buildCommand": "pnpm --filter @haste/api build && pnpm --filter @haste/web build",
-  "outputDirectory": "static",
+  "outputDirectory": "packages/api/static",
   "functions": {
     "api/index.ts": {
       "maxDuration": 30,
-      "includeFiles": "{static/**,openapi.json,about.md,node_modules/@resvg/resvg-wasm/index_bg.wasm}"
+      "includeFiles": "{packages/api/static/**,packages/api/openapi.json,packages/api/about.md,node_modules/@resvg/resvg-wasm/index_bg.wasm}"
     }
   },
   "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }]

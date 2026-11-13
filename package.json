@@ -2,6 +2,9 @@
   "name": "haste",
   "private": true,
   "type": "module",
+  "dependencies": {
+    "@hono/node-server": "^2.1.8"
+  },
   "packageManager": "pnpm@10.33.0",
   "engines": {
     "node": ">=22"

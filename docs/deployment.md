@@ -84,32 +84,33 @@ version.
 
 ### 4. Build and files
 
-Set the project's **Root Directory** to `packages/api` in the dashboard. This is
-not optional and it cannot be expressed in the repository: Vercel only turns
-files in the _project root's_ `api/` directory into functions, and the
-repository root has no `api/`. Left unset, the build fails with:
+Leave the project's **Root Directory** at the repository root — the default when
+you import the repository. `vercel.json` and `api/index.ts` sit there, because
+Vercel only turns files in the _project root's_ `api/` directory into functions.
+A config or an entry inside `packages/api` is invisible to it, and the build then
+fails with:
 
 ```
 [BUILD_FAILED] No entrypoint found in "/vercel/path0"
 ```
 
-`/vercel/path0` is the repository root, found no `vercel.json` (it lives in the
-package) and fell back to zero-config detection. A root `vercel.json` cannot
-fix this — its `functions` entry has to be `api/index.ts` relative to the
-project root, so the setting and the config that depends on it move together.
+`/vercel/path0` is the repository root. The root entry is three lines of
+adaptor over the compiled package (`packages/api/dist/http.js`), so `static/`,
+`openapi.json` and the fonts still resolve from the package root that
+`includeFiles` ships.
 
-`packages/api/vercel.json` already declares everything:
+``vercel.json` declares everything:
 
 ```json
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "pnpm run build",
-  "outputDirectory": "static",
+  "buildCommand": "pnpm --filter @haste/api build && pnpm --filter @haste/web build",
+  "outputDirectory": "packages/api/static",
   "functions": {
     "api/index.ts": {
       "maxDuration": 30,
-      "includeFiles": "{static/**,openapi.json,about.md,node_modules/@resvg/resvg-wasm/index_bg.wasm}"
+      "includeFiles": "{packages/api/static/**,packages/api/openapi.json,packages/api/about.md,node_modules/@resvg/resvg-wasm/index_bg.wasm}"
     }
   },
   "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }]
@@ -125,10 +126,11 @@ Four properties are load-bearing:
   selects the "Other" framework preset, which leaves `api/index.ts` as the only
   entry.
 
-- **`outputDirectory: "static"`.** With no framework selected, Vercel still
-  expects a static output directory and defaults to `public`, which this project
-  does not have (`[STATIC_BUILD_NO_OUT_DIR] No Output Directory named "public"`).
-  `packages/api/static/` is that directory. Its files are served from the CDN, and because
+- **`outputDirectory: "packages/api/static"`.** With no framework selected,
+  Vercel still expects a static output directory and defaults to `public`, which
+  this project does not have (`[STATIC_BUILD_NO_OUT_DIR] No Output Directory
+named "public"`). The built SPA is copied into that directory by the web
+  build, which is why `buildCommand` runs both packages. Its files are served from the CDN, and because
   the filesystem is checked before rewrites, everything else — `/documents`,
   `/raw/…`, `/healthz` — falls through to the function.
 

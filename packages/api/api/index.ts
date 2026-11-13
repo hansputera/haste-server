@@ -20,18 +20,23 @@ type NodeRequestListener = (incoming: IncomingMessage, outgoing: ServerResponse)
 
 let listener: NodeRequestListener | undefined;
 
-const getListener = async (): Promise<NodeRequestListener> => {
+/**
+ * The adapter Vercel's Node runtime calls.
+ *
+ * Exported as a value so the repository-root entry (`/api/index.ts`, which
+ * Vercel requires when Root Directory is the repository root) can delegate to
+ * it without importing anything else: everything that needs this package's
+ * dependencies stays on this side, where those dependencies resolve.
+ */
+export const nodeListener = async (
+  request: IncomingMessage,
+  response: ServerResponse
+): Promise<void> => {
   if (!listener) {
     const { app } = await prepareForServerless();
     listener = getRequestListener(app.fetch);
   }
-  return listener;
+  await listener(request, response);
 };
 
-export default async function handler(
-  request: IncomingMessage,
-  response: ServerResponse
-): Promise<void> {
-  const handle = await getListener();
-  await handle(request, response);
-}
+export default nodeListener;
