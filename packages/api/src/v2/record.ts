@@ -36,6 +36,12 @@ export interface V2Record {
   createdAt: string;
   burn: boolean;
   encrypted: boolean;
+  /**
+   * True when this is a v1 paste read through v2: the stored value is raw text
+   * rather than a v2 record, so it has no title, language or creation time.
+   * Never persisted — it is derived on read.
+   */
+  legacy?: boolean;
   /** Plaintext, only when `encrypted` is false. */
   body?: string;
   /** Only when `encrypted` is true. */

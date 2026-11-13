@@ -15,12 +15,19 @@
 import { createHighlighterCore, type HighlighterCore } from 'shiki/core';
 import { createJavaScriptRegexEngine } from 'shiki/engine/javascript';
 
+import { detectLanguage } from './detect-language';
 import { SHIKI_LANG_LOADERS } from './shiki-languages';
 import { CARBON_THEME } from './carbon';
 
 export interface WorkerRequest {
   id: number;
   text: string;
+  language: string;
+}
+
+export interface WorkerFailure {
+  id: number;
+  error: string;
   language: string;
 }
 
@@ -53,15 +60,12 @@ const GRAMMAR_ALIASES: Record<string, string> = {
 const resolveGrammar = (language: string): string => GRAMMAR_ALIASES[language] ?? language;
 
 const render = async (text: string, language: string): Promise<string | null> => {
-  // `''` means auto-detect, which shiki has no equivalent for. Returning
-  // `null` makes the caller escape the text, which is the honest result:
-  // guessing a grammar would colour a paste wrong more often than not.
-  if (language === '') return null;
-
   const hl = await getHighlighter();
-  const wanted = resolveGrammar(language);
+  const loaded = hl.getLoadedLanguages();
 
-  if (!hl.getLoadedLanguages().includes(wanted)) return null;
+  // `''` is Auto-detect in the picker, and every v1 paste arrives that way.
+  const wanted = language === '' ? detectLanguage(text) : resolveGrammar(language);
+  if (!wanted || !loaded.includes(wanted)) return null;
 
   return hl.codeToHtml(text, { lang: wanted, theme: CARBON_THEME.name ?? 'carbon' });
 };
@@ -70,8 +74,14 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
   const { id, text, language } = event.data;
 
   void render(text, language)
-    .catch(() => null)
+    .catch((error: unknown) => {
+      // Reported rather than swallowed: a highlight failure used to look like
+      // "the paste has no highlighting", which is undiagnosable from outside.
+      self.postMessage({ id, error: String(error), language } satisfies WorkerFailure);
+      return null;
+    })
     .then((value) => {
+      if (value === null) return;
       const response: WorkerResponse = { id, value, language };
       self.postMessage(response);
     });

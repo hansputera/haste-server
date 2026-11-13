@@ -167,8 +167,32 @@ describe('v2 service', () => {
     assert.equal(read.record.burn, true);
   });
 
-  it('should answer not-found for a v1 body stored under the same key', async () => {
+  it('should read a v1 paste as a legacy record', async () => {
     const service = buildService(memoryStore({ abcdefghij: 'plain v1 text' }));
+    const result = await service.read('abcdefghij');
+
+    assert.equal(result.ok, true);
+    assert.equal(result.record.body, 'plain v1 text');
+    assert.equal(result.record.legacy, true);
+    assert.equal(result.record.key, 'abcdefghij');
+    assert.equal(result.record.burn, false);
+    assert.equal(result.record.encrypted, false);
+  });
+
+  it('should never burn a v1 paste, which has no such flag', async () => {
+    const store = memoryStore({ abcdefghij: 'plain v1 text' });
+    const service = buildService(store);
+
+    await service.read('abcdefghij');
+    await service.read('abcdefghij');
+
+    assert.equal(store.calls.filter((call) => call.op === 'remove').length, 0);
+    // Still there for v1 to read.
+    assert.equal(store.entries['abcdefghij'], 'plain v1 text');
+  });
+
+  it('should not present a corrupt marked value as a v1 paste', async () => {
+    const service = buildService(memoryStore({ abcdefghij: `${V2_MARKER}{broken` }));
     assert.deepEqual(await service.read('abcdefghij'), { ok: false, reason: 'not-found' });
   });
 

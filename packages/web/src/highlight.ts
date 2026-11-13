@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import type { WorkerRequest, WorkerResponse } from './highlight.worker';
+import type { WorkerFailure, WorkerRequest, WorkerResponse } from './highlight.worker';
 
 const escapeHtml = (value: string): string =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -30,9 +30,11 @@ export const useHighlighted = (code: string, language: string): string | null =>
     const worker = workerRef.current;
     const id = nextId++;
 
-    const onMessage = (event: MessageEvent<WorkerResponse>): void => {
+    const onMessage = (event: MessageEvent<WorkerResponse | WorkerFailure>): void => {
       if (event.data.id !== id) return;
-      setHtml(event.data.value);
+      // A failure is reported as `null` markup: the card then renders escaped
+      // text, which is a readable paste rather than a blank one.
+      setHtml('value' in event.data ? event.data.value : null);
     };
 
     worker.addEventListener('message', onMessage);
@@ -42,13 +44,20 @@ export const useHighlighted = (code: string, language: string): string | null =>
     return () => worker.removeEventListener('message', onMessage);
   }, [code, language]);
 
-  useEffect(
-    () => () => {
+  // Terminated on real unmount only, and deliberately not in an effect cleanup:
+  // StrictMode mounts, unmounts and remounts, so an unmount cleanup kills the
+  // worker the remount then reuses — a terminated worker accepts `postMessage`
+  // and never answers, which is exactly the "no highlighting, no error" symptom
+  // this whole hook exists to avoid.
+  useEffect(() => {
+    const onUnload = (): void => {
       workerRef.current?.terminate();
       workerRef.current = null;
-    },
-    []
-  );
+    };
+
+    window.addEventListener('pagehide', onUnload);
+    return () => window.removeEventListener('pagehide', onUnload);
+  }, []);
 
   return html;
 };

@@ -21,6 +21,8 @@ export interface V2Record {
   createdAt: string;
   burn: boolean;
   encrypted: boolean;
+  /** Present on a v1 paste read through v2; never persisted. */
+  legacy?: boolean;
   body?: string;
   cipher?: V2Cipher;
 }

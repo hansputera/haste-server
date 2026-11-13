@@ -117,10 +117,19 @@ export function Viewer({ id }: { id: string }): ReactElement {
     <main className="v2-viewer">
       <h1 className="v2-title">{record.title || record.key}</h1>
       {record.description ? <p className="v2-description">{record.description}</p> : null}
+      {/* A v1 paste carries no title, language or creation time. Saying so is
+          kinder than showing an empty card with a guessed language. */}
+      {record.legacy ? (
+        <p className="v2-description">
+          Pasted with haste v1 — no title, language or burn setting to show.
+        </p>
+      ) : null}
 
+      {/* `''` is Auto-detect, which is what a v1 paste gets: it has no language
+          field, so the card guesses one rather than rendering flat text. */}
       <Card
         title={record.title}
-        language={record.language || 'plaintext'}
+        language={record.language}
         code={code}
         fallbackTitle={record.key}
       />

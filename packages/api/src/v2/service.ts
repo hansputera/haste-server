@@ -8,7 +8,7 @@
 import { createLogger, type Logger } from '../lib/log.js';
 import type { Config, DocumentStore } from '../lib/types.js';
 import type { DocumentService } from '../core.js';
-import { parseRecord, serializeRecord, type V2Cipher, type V2Record } from './record.js';
+import { parseRecord, serializeRecord, V2_MARKER, type V2Cipher, type V2Record } from './record.js';
 
 const log = createLogger();
 
@@ -62,13 +62,44 @@ export const createV2Service = (
 
   // The single place that turns a key into a record, so the consuming and
   // non-consuming reads can never disagree about what a record is.
+  //
+  // v1 and v2 share a key space, so a key minted by v1 holds raw text. Those
+  // pastes are readable here rather than 404: the value becomes a record with
+  // the text as its body and nothing else filled in. It is never persisted and
+  // never burns — v1 had no such flag, and inventing one would delete a paste
+  // its author expects to keep.
   const load = async (key: string): Promise<ReadResult> => {
     const bare = key.split('.')[0] as string;
 
     try {
       const value = await getStore(store, bare);
-      const record = value ? parseRecord(value) : null;
-      return record ? { ok: true, record } : { ok: false, reason: 'not-found' };
+      if (typeof value !== 'string' || value.length === 0) {
+        return { ok: false, reason: 'not-found' };
+      }
+
+      const record = parseRecord(value);
+      if (record) return { ok: true, record };
+
+      // A value carrying the marker but failing to parse is a corrupt or
+      // newer-format record, not a v1 paste: showing its raw JSON as code would
+      // be worse than a 404.
+      if (value.startsWith(V2_MARKER)) return { ok: false, reason: 'not-found' };
+
+      return {
+        ok: true,
+        record: {
+          version: 2,
+          key: bare,
+          title: '',
+          description: '',
+          language: '',
+          createdAt: '',
+          burn: false,
+          encrypted: false,
+          legacy: true,
+          body: value
+        }
+      };
     } catch (error) {
       serviceLog.error({ key: bare, error: String(error) }, 'v2 read failed');
       return { ok: false, reason: 'store' };
