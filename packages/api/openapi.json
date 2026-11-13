@@ -1,0 +1,378 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "haste",
+    "version": "1.0.0",
+    "description": "Private pastebin server."
+  },
+  "paths": {
+    "/documents": {
+      "post": {
+        "operationId": "createDocument",
+        "summary": "Store a new document and return its key.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "text/plain": { "schema": { "type": "string" } },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": { "data": { "type": "string" } },
+                "required": ["data"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stored.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/DocumentKey" } }
+            }
+          },
+          "400": {
+            "description": "Body longer than maxLength.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "413": {
+            "description": "Body over the hard upload ceiling.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Store failure.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
+        }
+      }
+    },
+    "/documents/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": {
+        "operationId": "getDocument",
+        "summary": "Return a document and its key.",
+        "responses": {
+          "200": {
+            "description": "Found.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Document" } }
+            }
+          },
+          "404": {
+            "description": "No such document.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
+        }
+      },
+      "head": {
+        "operationId": "headDocument",
+        "summary": "Same as GET, without a body.",
+        "responses": {
+          "200": { "description": "Found." },
+          "404": { "description": "No such document." }
+        }
+      }
+    },
+    "/raw/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": {
+        "operationId": "getRawDocument",
+        "summary": "Return a document as plain text.",
+        "responses": {
+          "200": {
+            "description": "Found.",
+            "content": { "text/plain": { "schema": { "type": "string" } } }
+          },
+          "404": {
+            "description": "No such document.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
+        }
+      },
+      "head": {
+        "operationId": "headRawDocument",
+        "summary": "Same as GET, without a body.",
+        "responses": {
+          "200": { "description": "Found." },
+          "404": { "description": "No such document." }
+        }
+      }
+    },
+    "/v2/documents": {
+      "post": {
+        "operationId": "createV2Document",
+        "summary": "Store a v2 document (title, description, language, secret, burn).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/V2CreateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Stored.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/DocumentKey" } }
+            }
+          },
+          "400": {
+            "description": "Neither or both of body/cipher, an over-long field, or malformed JSON.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "413": {
+            "description": "Body over the hard upload ceiling.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Store failure.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
+        }
+      }
+    },
+    "/v2/documents/{id}": {
+      "parameters": [
+        { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+      ],
+      "get": {
+        "operationId": "getV2Document",
+        "summary": "Return a v2 record. A burn paste is deleted by this read.",
+        "responses": {
+          "200": {
+            "description": "Found.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/V2Record" } }
+            }
+          },
+          "404": {
+            "description": "No such document.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteV2Document",
+        "summary": "Delete a v2 document. Idempotent.",
+        "responses": {
+          "204": { "description": "Deleted, or already absent." }
+        }
+      }
+    },
+    "/v2/og/{id}.png": {
+      "parameters": [
+        { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+      ],
+      "get": {
+        "operationId": "getV2OgImage",
+        "summary": "Render the 1200x630 preview card as PNG.",
+        "responses": {
+          "200": {
+            "description": "The card.",
+            "content": { "image/png": { "schema": { "type": "string", "format": "binary" } } }
+          },
+          "404": {
+            "description": "No such document.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "The card could not be rendered.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
+        }
+      }
+    },
+    "/v2": {
+      "get": {
+        "operationId": "getV2Page",
+        "summary": "The v2 editor.",
+        "responses": {
+          "200": {
+            "description": "HTML.",
+            "content": { "text/html": { "schema": { "type": "string" } } }
+          }
+        }
+      }
+    },
+    "/v2/{id}": {
+      "parameters": [
+        { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+      ],
+      "get": {
+        "operationId": "getV2SharedPage",
+        "summary": "The shared paste, with preview tags for its title and card.",
+        "responses": {
+          "200": {
+            "description": "HTML.",
+            "content": { "text/html": { "schema": { "type": "string" } } }
+          }
+        }
+      }
+    },
+    "/healthz": {
+      "get": {
+        "operationId": "health",
+        "summary": "Liveness probe. Never touches the store.",
+        "responses": {
+          "200": {
+            "description": "Process is up.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Status" } }
+            }
+          }
+        }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "operationId": "ready",
+        "summary": "Readiness probe. Ready once documents are seeded.",
+        "responses": {
+          "200": {
+            "description": "Ready.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Status" } }
+            }
+          },
+          "503": {
+            "description": "Not ready.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Status" } }
+            }
+          }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "operationId": "openapi",
+        "summary": "This document.",
+        "responses": {
+          "200": {
+            "description": "OpenAPI 3.1 description of this server.",
+            "content": { "application/json": { "schema": { "type": "object" } } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "Id": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "key, optionally followed by a .ext suffix that is ignored"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": { "message": { "type": "string" } },
+        "required": ["message"]
+      },
+      "DocumentKey": {
+        "type": "object",
+        "properties": { "key": { "type": "string" } },
+        "required": ["key"]
+      },
+      "Document": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "string" },
+          "key": { "type": "string" }
+        },
+        "required": ["data", "key"]
+      },
+      "Status": {
+        "type": "object",
+        "properties": { "status": { "type": "string" } },
+        "required": ["status"]
+      },
+      "V2Cipher": {
+        "type": "object",
+        "description": "Everything the browser needs to derive the key back. The passphrase is never sent.",
+        "properties": {
+          "iv": { "type": "string", "description": "base64 AES-GCM nonce" },
+          "salt": { "type": "string", "description": "base64 PBKDF2 salt" },
+          "iterations": { "type": "integer", "description": "PBKDF2-SHA-256 iterations" },
+          "data": { "type": "string", "description": "base64 ciphertext" }
+        },
+        "required": ["iv", "salt", "iterations", "data"]
+      },
+      "V2Record": {
+        "type": "object",
+        "properties": {
+          "version": { "type": "integer", "enum": [2] },
+          "key": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "language": { "type": "string", "description": "highlight.js grammar, '' = auto" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "burn": { "type": "boolean" },
+          "encrypted": { "type": "boolean" },
+          "body": { "type": "string", "description": "Present only when encrypted is false" },
+          "cipher": { "$ref": "#/components/schemas/V2Cipher" }
+        },
+        "required": [
+          "version",
+          "key",
+          "title",
+          "description",
+          "language",
+          "createdAt",
+          "burn",
+          "encrypted"
+        ]
+      },
+      "V2CreateRequest": {
+        "type": "object",
+        "description": "Exactly one of body and cipher must be present.",
+        "properties": {
+          "title": { "type": "string", "maxLength": 200 },
+          "description": { "type": "string", "maxLength": 500 },
+          "language": { "type": "string", "maxLength": 32 },
+          "body": { "type": "string" },
+          "cipher": { "$ref": "#/components/schemas/V2Cipher" },
+          "burn": { "type": "boolean" }
+        },
+        "oneOf": [{ "required": ["body"] }, { "required": ["cipher"] }]
+      }
+    }
+  }
+}

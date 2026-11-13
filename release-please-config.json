@@ -1,7 +1,10 @@
 {
   "release-type": "node",
   "packages": {
-    ".": {
+    "packages/api": {
+      "release-type": "node"
+    },
+    "packages/web": {
       "release-type": "node"
     }
   }

@@ -9,7 +9,7 @@
 # and the document store untouched.
 #
 #   sudo sh deploy/install.sh            # install and (re)build
-#   sudo sh deploy/install.sh --no-build # reuse an existing $APP_DIR/dist
+#   sudo sh deploy/install.sh --no-build # reuse an existing packages/api/dist
 #
 # After it returns: edit /etc/haste.env, then `systemctl restart haste`.
 
@@ -116,15 +116,19 @@ if [ "$BUILD" -eq 1 ]; then
   say "copying sources from $SRC_DIR to $APP_DIR"
   # Everything except build output, dependencies and repository history. The
   # trailing slash on the source copies its contents, not the directory.
+  #
+  # `dist` and `static/*.gz` are no longer root-relative after the move into
+  # `packages/api`; rsync matches a bare name at any depth but a path with a
+  # slash only at the top, which `--exclude node_modules` still covers.
   if command -v rsync >/dev/null 2>&1; then
     rsync -a --delete \
       --exclude node_modules --exclude dist --exclude data --exclude .git \
-      --exclude 'static/*.gz' --exclude .vercel --exclude .commandcode \
+      --exclude 'packages/api/static/*.gz' --exclude .vercel --exclude .commandcode \
       "$SRC_DIR"/ "$APP_DIR"/
   else
     ( cd "$SRC_DIR" && tar -cf - \
         --exclude=./node_modules --exclude=./dist --exclude=./data --exclude=./.git \
-        --exclude='./static/*.gz' --exclude=./.vercel --exclude=./.commandcode . ) |
+        --exclude=./packages/api/static/*.gz --exclude=./.vercel --exclude=./.commandcode . ) |
       ( cd "$APP_DIR" && tar -xf - )
   fi
 
@@ -134,10 +138,14 @@ if [ "$BUILD" -eq 1 ]; then
   say "building"
   ( cd "$APP_DIR" && "$PNPM_BIN" run build )
 
-  say "pruning dev dependencies"
-  ( cd "$APP_DIR" && "$PNPM_BIN" prune --prod )
+  # No `prune --prod` here: at a workspace root it does not prune a single
+  # package and fails outright when a workspace `package.json` has no
+  # dependencies of its own. The unit runs `packages/api/dist/server.js`, whose
+  # imports are all runtime dependencies, so dev dependencies left in the tree
+  # are unused rather than harmful.
 else
-  [ -f "$APP_DIR/dist/server.js" ] || die "$APP_DIR/dist is missing; drop --no-build"
+  [ -f "$APP_DIR/packages/api/dist/server.js" ] ||
+    die "$APP_DIR/packages/api/dist is missing; drop --no-build"
 fi
 
 # The service reads the tree and never writes it.
@@ -174,9 +182,9 @@ fi
 # ExecStart is rewritten to the node that was validated above; everything else
 # comes from deploy/haste.service verbatim.
 say "installing /etc/systemd/system/haste.service"
-sed "s|^ExecStart=.*|ExecStart=$NODE_BIN --enable-source-maps $APP_DIR/dist/server.js|" \
+sed "s|^ExecStart=.*|ExecStart=$NODE_BIN --enable-source-maps $APP_DIR/packages/api/dist/server.js|" \
   "$SRC_DIR/deploy/haste.service" >/etc/systemd/system/haste.service
-sed -i "s|^WorkingDirectory=.*|WorkingDirectory=$APP_DIR|" /etc/systemd/system/haste.service
+sed -i "s|^WorkingDirectory=.*|WorkingDirectory=$APP_DIR/packages/api|" /etc/systemd/system/haste.service
 sed -i "s|^ReadWritePaths=.*|ReadWritePaths=$DATA_DIR|" /etc/systemd/system/haste.service
 chmod 0644 /etc/systemd/system/haste.service
 

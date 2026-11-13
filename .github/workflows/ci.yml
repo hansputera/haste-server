@@ -39,6 +39,7 @@ jobs:
       - run: pnpm run check:deploy
       - run: pnpm run check:config-docs
       - run: pnpm run check:highlight
+      - run: pnpm run check:font
       - run: pnpm run format:check
       - name: node version actually used
         run: node --version
@@ -61,7 +62,7 @@ jobs:
       - run: pnpm run build
       - name: bun smoke test
         run: |
-          PORT=7779 HOST=127.0.0.1 bun src/server.ts &
+          PORT=7779 HOST=127.0.0.1 bun packages/api/src/server.ts &
           server=$!
           for _ in $(seq 1 50); do
             if curl -sf http://127.0.0.1:7779/healthz | grep -q '"status":"ok"'; then

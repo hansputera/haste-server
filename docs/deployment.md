@@ -5,12 +5,12 @@ the storage and the configuration layer change.
 
 ## What every deployment needs
 
-| Requirement                         | Why                                                                                  |
-| ----------------------------------- | ------------------------------------------------------------------------------------ |
-| **Node.js ≥ 22**                    | `engines` requires it. Node 20 is end-of-life and receives no security fixes.        |
-| **A build step** (`pnpm run build`) | The app runs from `dist/`. Serverless entrypoints import `dist/http.js`, not `src/`. |
-| **A document store**                | Anything except a durable `file` directory loses pastes at the next restart.         |
-| **`HASTE_STORAGE__TYPE`**           | Defaults to `file`.                                                                  |
+| Requirement                         | Why                                                                                                            |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **Node.js ≥ 22**                    | `engines` requires it. Node 20 is end-of-life and receives no security fixes.                                  |
+| **A build step** (`pnpm run build`) | The app runs from `packages/api/dist/`. Serverless entrypoints import `packages/api/dist/http.js`, not `src/`. |
+| **A document store**                | Anything except a durable `file` directory loses pastes at the next restart.                                   |
+| **`HASTE_STORAGE__TYPE`**           | Defaults to `file`.                                                                                            |
 
 Configuration resolves in one order: defaults, then the config file, then the
 environment. `HASTE_*` beats the legacy names (`STORAGE_TYPE`, `PORT`, …), and
@@ -84,7 +84,12 @@ version.
 
 ### 4. Build and files
 
-`vercel.json` already declares everything:
+Set the project's **Root Directory** to `packages/api` in the dashboard. The
+repository is a pnpm workspace, so `vercel.json`, `api/index.ts` and the static
+output all live in that package; with the root left at the repository root,
+Vercel finds no `api/` function and the deploy fails loudly.
+
+`packages/api/vercel.json` already declares everything:
 
 ```json
 {
@@ -95,7 +100,7 @@ version.
   "functions": {
     "api/index.ts": {
       "maxDuration": 30,
-      "includeFiles": "{static/**,openapi.json,about.md}"
+      "includeFiles": "{static/**,openapi.json,about.md,node_modules/@resvg/resvg-wasm/index_bg.wasm}"
     }
   },
   "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }]
@@ -105,7 +110,7 @@ version.
 Four properties are load-bearing:
 
 - **`framework: null`.** Without it Vercel auto-detects a Node project and
-  starts `src/server.ts` as a long-running app: that entry binds a port and
+  starts `packages/api/src/server.ts` as a long-running app: that entry binds a port and
   requires `config.js`, so the deployment dies with
   `cannot read config.js: file does not exist`. `null` is how `vercel.json`
   selects the "Other" framework preset, which leaves `api/index.ts` as the only
@@ -114,7 +119,7 @@ Four properties are load-bearing:
 - **`outputDirectory: "static"`.** With no framework selected, Vercel still
   expects a static output directory and defaults to `public`, which this project
   does not have (`[STATIC_BUILD_NO_OUT_DIR] No Output Directory named "public"`).
-  `static/` is that directory. Its files are served from the CDN, and because
+  `packages/api/static/` is that directory. Its files are served from the CDN, and because
   the filesystem is checked before rewrites, everything else — `/documents`,
   `/raw/…`, `/healthz` — falls through to the function.
 
@@ -126,7 +131,7 @@ Four properties are load-bearing:
   A function named `api/index.ts` is served at `/api/index`, which is the
   rewrite destination.
 
-`includeFiles` is not optional: `static/` is served from disk and `about.md` is
+`includeFiles` is not optional: `packages/api/static/` is served from disk and `about.md` is
 read at boot. Without it the deployment answers `404` for every asset and logs
 `failed to load static document`.
 
@@ -175,11 +180,12 @@ logs for the `config resolved` line and the error after it.
 
 ## Netlify
 
-`netlify.toml` builds with `pnpm run build` and routes every path to
-`netlify/functions/server`. The same environment variables apply, plus
-`external_node_modules` already lists `@hono/netlify`, `hono` and `pino` so the
-bundler leaves them external. Set `HASTE_STORAGE__PATH=/tmp/haste` if you use the
-`file` store; everything above about durability applies.
+`netlify.toml` builds with `pnpm --filter @haste/api build` and routes every path
+to `packages/api/netlify/functions/server`. The same environment variables apply,
+plus `external_node_modules` already lists `hono`, `pino`, `satori` and
+`@resvg/resvg-wasm` so the bundler leaves them external. Set
+`HASTE_STORAGE__PATH=/tmp/haste` if you use the `file` store; everything above
+about durability applies.
 
 ## Docker / a long-lived process
 
@@ -207,5 +213,5 @@ pnpm run build
 HASTE_STORAGE__TYPE=file HASTE_STORAGE__PATH=/var/lib/haste pnpm start
 ```
 
-`pnpm start` runs `dist/server.js`, which listens on `HASTE_HOST`:`HASTE_PORT`
-(`0.0.0.0:7777`). `bun src/server.ts` runs the same app on Bun.
+`pnpm start` runs `packages/api/dist/server.js`, which listens on `HASTE_HOST`:`HASTE_PORT`
+(`0.0.0.0:7777`). `bun packages/api/src/server.ts` runs the same app on Bun.

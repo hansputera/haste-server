@@ -1,10 +1,14 @@
 [build]
-  command = "pnpm run build"
+  # Both packages: the API's own `build` emits `dist/`, and the web build
+  # publishes the SPA into `packages/api/static/v2`, which is a build artefact
+  # and therefore not in the repository. Building only the API would deploy a
+  # server with no `/v2`.
+  command = "pnpm --filter @haste/api build && pnpm --filter @haste/web build"
 
 [functions]
-  directory = "netlify/functions"
+  directory = "packages/api/netlify/functions"
   node_bundler = "esbuild"
-  included_files = ["static/**", "openapi.json", "about.md"]
+  included_files = ["packages/api/static/**", "packages/api/openapi.json", "packages/api/about.md"]
   # Every dependency is left to Node's own resolver.
   #
   # Netlify bundles this function as an ES module, and esbuild inlines any
@@ -14,6 +18,10 @@
   # `express-rate-limit` → `ip-address`) in turn. Leaving the whole dependency
   # set external removes the class of failure rather than one instance of it;
   # `node_modules` is installed on the function anyway.
+  #
+  # `satori` and `@resvg/resvg-wasm` are here for the same reason: satori is
+  # ESM-only and resolves `react` for its types, and the resvg wasm binary is
+  # located through `require.resolve`, which an inlined bundle cannot answer.
   external_node_modules = [
     "busboy",
     "express-rate-limit",
@@ -21,6 +29,8 @@
     "pg",
     "pino",
     "@hono/node-server",
+    "satori",
+    "@resvg/resvg-wasm",
   ]
 
 [[redirects]]

@@ -1,87 +1,36 @@
 {
   "name": "haste",
-  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Private Pastebin Server",
-  "repository": {
-    "type": "git",
-    "url": "git+ssh://git@github.com/hansputera/haste-server.git"
-  },
-  "bugs": {
-    "url": "https://github.com/hansputera/haste-server/issues"
-  },
-  "homepage": "https://github.com/hansputera/haste-server#readme",
-  "keywords": [
-    "paste",
-    "pastebin"
-  ],
-  "author": {
-    "name": "John Crepezzi",
-    "email": "john.crepezzi@gmail.com",
-    "url": "http://seejohncode.com/"
-  },
-  "main": "dist/core.js",
+  "packageManager": "pnpm@10.33.0",
   "engines": {
     "node": ">=22"
   },
-  "dependencies": {
-    "@hono/node-server": "^2.1.8",
-    "busboy": "^1.6.0",
-    "express-rate-limit": "^8.7.4",
-    "hono": "^4.13.18",
-    "pg": "^8.0.0",
-    "pino": "^10.4.0"
+  "scripts": {
+    "build": "pnpm --filter @haste/api build && pnpm --filter @haste/web build",
+    "check": "pnpm --filter @haste/api check && pnpm --filter @haste/web check",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "node scripts/check-format.mjs",
+    "test": "pnpm --filter @haste/api test",
+    "dev": "pnpm --filter @haste/api dev",
+    "start": "pnpm --filter @haste/api start",
+    "check:openapi": "pnpm --filter @haste/api check:openapi",
+    "check:config-docs": "pnpm --filter @haste/api check:config-docs",
+    "check:highlight": "pnpm --filter @haste/api check:highlight",
+    "check:font": "pnpm --filter @haste/api check:font",
+    "check:deploy": "pnpm --filter @haste/api check:deploy",
+    "gen:config-docs": "pnpm --filter @haste/api gen:config-docs",
+    "gen:highlight": "pnpm --filter @haste/api gen:highlight",
+    "gen:font": "pnpm --filter @haste/api gen:font",
+    "commitlint": "commitlint --edit"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
     "@eslint/js": "^10.0.1",
-    "@types/busboy": "^1.5.4",
-    "@types/node": "^26.6.6",
-    "@types/pg": "^8.15.6",
     "eslint": "^10.14.0",
     "prettier": "^3.10.1",
-    "typescript": "^5.9.0",
     "typescript-eslint": "^8.72.2"
-  },
-  "bundledDependencies": [],
-  "bin": {
-    "haste-server": "./dist/server.js"
-  },
-  "files": [
-    "dist",
-    "static"
-  ],
-  "directories": {
-    "lib": "./dist"
-  },
-  "scripts": {
-    "build": "tsc",
-    "postbuild": "node scripts/precompress.js && node scripts/copy-assets.mjs",
-    "prestart": "pnpm run build",
-    "serve": "node dist/server.js",
-    "start": "node dist/server.js",
-    "dev": "node --watch --experimental-strip-types src/server.ts",
-    "dev:bun": "bun --watch src/server.ts",
-    "start:bun": "bun src/server.ts",
-    "test": "pnpm run build && node scripts/run-tests.mjs",
-    "check": "tsc --noEmit",
-    "lint": "eslint .",
-    "format": "prettier --write .",
-    "format:check": "node scripts/check-format.mjs",
-    "check:openapi": "node scripts/check-openapi.mjs",
-    "commitlint": "commitlint --edit",
-    "gen:config-docs": "node scripts/gen-config-docs.mjs",
-    "check:config-docs": "node scripts/gen-config-docs.mjs --check",
-    "gen:highlight": "node scripts/build-highlight.js",
-    "check:highlight": "node scripts/build-highlight.js --check",
-    "check:deploy": "tsc --noEmit -p tsconfig.deploy.json"
-  },
-  "bundleDependencies": [],
-  "forkOf": "seejohnrun/haste-server",
-  "packageManager": "pnpm@10.33.0",
-  "pnpm": {
-    "onlyBuiltDependencies": []
   }
 }

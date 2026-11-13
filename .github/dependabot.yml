@@ -12,6 +12,17 @@ updates:
         dependency-type: development
     open-pull-requests-limit: 5
 
+  - package-ecosystem: npm # pnpm is read from pnpm-lock.yaml under the npm ecosystem
+    directory: /packages/web
+    schedule:
+      interval: weekly
+    groups:
+      production-dependencies:
+        dependency-type: production
+      dev-dependencies:
+        dependency-type: development
+    open-pull-requests-limit: 5
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

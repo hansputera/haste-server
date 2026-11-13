@@ -1,0 +1,295 @@
+/* hast v2.
+ *
+ * Deliberately self-contained: v1's `application.css` lays out a full-bleed
+ * editor with `body { padding: 20px 50px }` and `#linenos`/`#box`, none of which
+ * a card-based form wants. The palette is the same Solarized dark v1 uses.
+ */
+
+:root {
+  --bg: #002b36;
+  --surface: #073642;
+  --border: #586e75;
+  --fg: #eee8d5;
+  --muted: #93a1a1;
+  --accent: #268bd2;
+  --error: #dc322f;
+  --success: #859900;
+  --font: 'DejaVu Sans Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 32px 24px 64px;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+a {
+  color: var(--accent);
+}
+
+.v2-editor,
+.v2-viewer {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.v2-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.v2-head h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.v2-version {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.v2-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+input[type='text'],
+input[type='password'],
+select,
+textarea {
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+
+input:disabled {
+  opacity: 0.5;
+}
+
+textarea {
+  min-height: 220px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+button {
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--bg);
+  background: var(--muted);
+  border: 0;
+  border-radius: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.v2-secondary {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.v2-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.v2-secret {
+  flex: 1 1 260px;
+}
+
+/* The burn checkbox reads as one row, and its hint wraps inside the column
+   rather than running past it. `min-width: 0` is what lets the flex item
+   shrink below its content. */
+.v2-burn {
+  flex: 1 1 320px;
+  min-width: 0;
+  flex-direction: row;
+  align-items: center;
+  align-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Full row, so an over-long hint cannot widen the label past its column. */
+.v2-burn .v2-hint {
+  flex-basis: 100%;
+  min-width: 0;
+  margin-left: 24px;
+}
+
+.v2-burn input {
+  accent-color: var(--accent);
+}
+
+.v2-hint {
+  color: var(--border);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* --- the card ------------------------------------------------------------ */
+
+.v2-card {
+  /* The 1200×630 composition the server rasterises to PNG, so the preview an
+     author looks at matches the image a chat client unfurls. `aspect-ratio`
+     with a fluid width keeps the frame's proportions and reserves exactly the
+     height it paints, which a `transform: scale` would not. */
+  width: 100%;
+  max-width: 1200px;
+  aspect-ratio: 1200 / 630;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  /* Every dimension inside the card is expressed in `cqi` — 1% of the card's
+     own width — so the whole composition, type included, is the server's
+     1200×630 frame scaled; nothing is measured against the viewport. */
+  container-type: inline-size;
+  font-size: 2cqi;
+}
+
+.v2-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.83cqi;
+  padding: 1.5cqi 2cqi;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.v2-dot {
+  width: 1.5cqi;
+  height: 1.5cqi;
+  border-radius: 50%;
+  display: inline-block;
+  flex: none;
+}
+
+.v2-dot-red {
+  background: #ff5f56;
+}
+.v2-dot-yellow {
+  background: #ffbd2e;
+}
+.v2-dot-green {
+  background: #27c93f;
+}
+
+.v2-card-title {
+  flex: 1;
+  text-align: center;
+  color: var(--fg);
+  font-size: 1em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.v2-card-body {
+  flex: 1;
+  padding: 2cqi 2.66cqi;
+  overflow: hidden;
+}
+
+.v2-card-code {
+  margin: 0;
+  font-size: 1.17em;
+  line-height: 1.5;
+  color: var(--muted);
+  white-space: pre;
+  overflow: hidden;
+}
+
+.v2-card-truncated {
+  margin: 0.66cqi 0 0;
+  color: var(--border);
+}
+
+/* --- viewer -------------------------------------------------------------- */
+
+.v2-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.v2-description {
+  margin: 0;
+  color: var(--muted);
+}
+
+.v2-unlock {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 16px;
+}
+
+.v2-unlock input {
+  min-width: 260px;
+}
+
+.v2-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.v2-saved,
+.v2-loading {
+  color: var(--success);
+  word-break: break-all;
+}
+
+.v2-error,
+.v2-warning,
+.v2-missing {
+  color: var(--error);
+}
+
+.v2-warning {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}

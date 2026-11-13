@@ -6,7 +6,12 @@ dist
 data
 *.DS_Store
 docker-compose.override.yml
-static/*.gz
+packages/api/static/*.gz
+
+# The built SPA is published into the API's static tree by
+# `packages/web/scripts/copy-web.mjs`; it is a build artefact, not a source.
+packages/api/static/v2/
+packages/web/tsconfig.tsbuildinfo
 
 # Local agent/tool state, never part of the repository.
 .commandcode/

@@ -1,6 +1,7 @@
-dist
-static
+packages/api/dist
+packages/api/static
+packages/web/dist
+packages/api/config.js
 pnpm-lock.yaml
 CHANGELOG.md
 data
-config.js

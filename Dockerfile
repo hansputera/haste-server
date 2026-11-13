@@ -3,20 +3,22 @@ FROM node:24-alpine AS build
 # the image and a developer's machine resolve the same dependency graph.
 RUN corepack enable
 WORKDIR /app
-COPY package.json pnpm-lock.yaml tsconfig.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/api/package.json packages/api/tsconfig.json packages/api/
+COPY packages/web/package.json packages/web/
 RUN pnpm install --frozen-lockfile
 COPY . .
-RUN pnpm run build && pnpm prune --prod
+RUN pnpm run build
 
 FROM node:24-alpine AS runtime
 RUN corepack enable
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build /app/package.json /app/pnpm-lock.yaml ./
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/static ./static
-COPY --from=build /app/openapi.json /app/about.md ./
-COPY --from=build /app/docker-entrypoint.sh ./
+COPY --from=build /app/packages/api/dist ./dist
+COPY --from=build /app/packages/api/static ./static
+COPY --from=build /app/packages/api/openapi.json /app/packages/api/about.md ./
+COPY --from=build /app/packages/api/docker-entrypoint.sh ./
 
 # The optional store clients are installed here so the image can run any store;
 # the package itself imports each one lazily, so a bare install does not.

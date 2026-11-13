@@ -37,7 +37,7 @@ Any current browser: the client is plain DOM and `fetch`, with no framework.
 ## Requirements
 
 Node.js **22 or newer** (24 and 26 LTS are tested), **or** Bun 1.4 or newer. Node runs the compiled output in
-`dist/`; Bun runs the TypeScript sources directly. The package is ESM
+`packages/api/dist/`; Bun runs the TypeScript sources directly. The package is ESM
 (`"type": "module"`).
 
 ## Installation
@@ -49,21 +49,21 @@ Node.js **22 or newer** (24 and 26 LTS are tested), **or** Bun 1.4 or newer. Nod
 5.  `pnpm start` (you may specify an optional `<config-path>` as well)
 
 `prestart` rebuilds, so a plain `pnpm start` after an edit still serves the new
-code; the explicit `pnpm run build` in the list above is what produces `dist/` on
-a fresh checkout. `pnpm run serve` runs `dist/server.js` with no build step and no
+code; the explicit `pnpm run build` in the list above is what produces `packages/api/dist/` on
+a fresh checkout. `pnpm run serve` runs `packages/api/dist/server.js` with no build step and no
 dev dependencies — that is what a production image or a PaaS `Procfile` uses.
 
 ## Development
 
-| command                            | what it does                              |
-| ---------------------------------- | ----------------------------------------- |
-| `pnpm run dev`                     | `node --watch` on the TypeScript sources  |
-| `pnpm run dev:bun`                 | `bun --watch` on the TypeScript sources   |
-| `pnpm run check`                   | `tsc --noEmit` (strict)                   |
-| `pnpm run lint`                    | eslint, flat config, type-aware           |
-| `pnpm run format` / `format:check` | prettier                                  |
-| `pnpm test`                        | build, then `node --test` against `dist/` |
-| `pnpm run check:openapi`           | validates `openapi.json`                  |
+| command                            | what it does                                           |
+| ---------------------------------- | ------------------------------------------------------ |
+| `pnpm run dev`                     | `node --watch` on the TypeScript sources               |
+| `pnpm run dev:bun`                 | `bun --watch` on the TypeScript sources                |
+| `pnpm run check`                   | `tsc --noEmit` (strict)                                |
+| `pnpm run lint`                    | eslint, flat config, type-aware                        |
+| `pnpm run format` / `format:check` | prettier                                               |
+| `pnpm test`                        | build, then `node --test` against `packages/api/dist/` |
+| `pnpm run check:openapi`           | validates `openapi.json`                               |
 
 ## Operations
 
@@ -399,8 +399,8 @@ your bucket:
 
 ## Deployment
 
-The app is built once by `createApp()` in `src/http.ts` and never listens itself;
-`src/runtime.ts` attaches a listener for Node or Bun. The same application object
+The app is built once by `createApp()` in `packages/api/src/http.ts` and never listens itself;
+`packages/api/src/runtime.ts` attaches a listener for Node or Bun. The same application object
 therefore runs as a long-lived process or as a function.
 
 ### Any server (VPS, container, PaaS with a Node runtime)
@@ -411,18 +411,18 @@ pnpm run build
 PORT=8080 HOST=0.0.0.0 pnpm run serve
 ```
 
-Or point the platform at `dist/server.js` directly. Set `PORT`; most hosts inject
-it. On Bun, `bun src/server.ts` runs the sources with no build step, and
-`bun dist/server.js` runs the compiled output.
+Or point the platform at `packages/api/dist/server.js` directly. Set `PORT`; most hosts inject
+it. On Bun, `bun packages/api/src/server.ts` runs the sources with no build step, and
+`bun packages/api/dist/server.js` runs the compiled output.
 
 ### Docker
 
-`Dockerfile` is a two-stage build on `node:22-alpine`. The first stage installs
-dev dependencies, compiles `src/` to `dist/` and prunes; the second copies only
-`dist/`, `static/`, the package metadata and the optional store clients, and runs
-as the unprivileged `node` user. `docker-entrypoint.sh` translates the
-`STORAGE_*` environment variables into a `config.js` through
-`dist/docker-entrypoint.js`.
+`Dockerfile` is a two-stage build on `node:24-alpine`. The first stage installs
+dev dependencies and compiles the workspace; the second copies only
+`packages/api/dist/`, `packages/api/static/`, the package metadata and the
+optional store clients, and runs as the unprivileged `node` user.
+`docker-entrypoint.sh` translates the `STORAGE_*` environment variables into a
+`config.js` through `packages/api/dist/docker-entrypoint.js`.
 
 ```bash
 docker build -t haste-server .
@@ -435,11 +435,13 @@ store writes to `./data`, so mount a volume owned by uid 1000 or point
 
 ### Vercel
 
-`vercel.json` routes every request to `api/index.ts`, which delegates to
-`@hono/vercel`'s Node handler, imports `dist/http.js` and ships `static/`,
-`openapi.json` and `about.md` through `includeFiles`. The build command is
-`pnpm run build`. `.nvmrc` pins Node 24, because Vercel's default (20) is below
-the package's floor.
+Vercel's project **Root Directory** must be `packages/api`: that is where
+`vercel.json` and `api/index.ts` live. The config routes every request to
+`api/index.ts`, which delegates to `@hono/vercel`'s Node handler, imports
+`dist/http.js` and ships `static/`, `openapi.json`, `about.md` and the resvg wasm
+binary through `includeFiles`. The build command is `pnpm run build`, which
+builds the workspace from its root. `.nvmrc` pins Node 24, because Vercel's
+default (20) is below the package's floor.
 
 Set `HASTE_CONFIG=` (empty) so configuration comes from the environment only,
 and pick a store: `file` works but is **not durable** — it needs
