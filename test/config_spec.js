@@ -11,7 +11,7 @@ import {
   resolveConfig,
   resolveConfigPath,
   validateConfig
-} from '../dist/config.js';
+} from '../dist/settings.js';
 
 // Configuration resolution is the surface an operator touches on every
 // deployment, so these tests pin the precedence order, the secret handling and

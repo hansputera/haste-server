@@ -21,7 +21,7 @@
     "email": "john.crepezzi@gmail.com",
     "url": "http://seejohncode.com/"
   },
-  "main": "dist/server.js",
+  "main": "dist/core.js",
   "engines": {
     "node": ">=22"
   },

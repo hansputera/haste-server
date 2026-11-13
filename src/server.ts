@@ -1,4 +1,4 @@
-import { resolveConfigPath } from './config.js';
+import { resolveConfigPath } from './settings.js';
 import { start } from './runtime.js';
 
 // Config path precedence: argv, then HASTE_CONFIG, then ./config.js. An empty

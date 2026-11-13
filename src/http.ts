@@ -24,7 +24,7 @@ import {
   type DocumentService,
   type StaticIndex
 } from './core.js';
-import { describeResolvedConfig, resolveConfig } from './config.js';
+import { describeResolvedConfig, resolveConfig } from './settings.js';
 import { deferred } from './lib/deferred.js';
 import { createLogger, type Logger } from './lib/log.js';
 import type { Config, DocumentStore } from './lib/types.js';

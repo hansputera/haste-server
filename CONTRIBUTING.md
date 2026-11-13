@@ -33,16 +33,16 @@ when no Redis is listening, so the suite passes on a machine without one.
 
 ## Layout
 
-| path             | contents                                                           |
-| ---------------- | ------------------------------------------------------------------ |
-| `src/`           | TypeScript sources, compiled to `dist/` by `tsc`                   |
-| `src/core.ts`    | framework-neutral request handling, stores, key selection          |
-| `src/http.ts`    | Hono middleware, routes, error contract                            |
-| `src/config.ts`  | config parse + validation                                          |
-| `src/runtime.ts` | Node/Bun listener and graceful shutdown                            |
-| `static/`        | browser assets, served verbatim                                    |
-| `test/`          | `node --test` specs, run against `dist/`                           |
-| `scripts/`       | build-time tooling (`precompress`, `copy-assets`, `check-openapi`) |
+| path              | contents                                                           |
+| ----------------- | ------------------------------------------------------------------ |
+| `src/`            | TypeScript sources, compiled to `dist/` by `tsc`                   |
+| `src/core.ts`     | framework-neutral request handling, stores, key selection          |
+| `src/http.ts`     | Hono middleware, routes, error contract                            |
+| `src/settings.ts` | config parse + validation                                          |
+| `src/runtime.ts`  | Node/Bun listener and graceful shutdown                            |
+| `static/`         | browser assets, served verbatim                                    |
+| `test/`           | `node --test` specs, run against `dist/`                           |
+| `scripts/`        | build-time tooling (`precompress`, `copy-assets`, `check-openapi`) |
 
 `static/` is never restyled in a code pull request. Visual changes ship on their
 own so a behaviour diff and a design diff are never reviewed together.

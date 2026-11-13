@@ -118,7 +118,16 @@ export const readConfigFile = (file: string, env: NodeJS.ProcessEnv = process.en
   }
 
   if (parseError) {
-    throw new ConfigFileError(file, `${file} is not valid JSON: ${(parseError as Error).message}`);
+    // A JavaScript module read where JSON was expected is almost always a
+    // shadowed path: a compiled module named like the config file sits next to
+    // it, and the resolver picked the module. Say so rather than echoing a
+    // syntax error that points at the wrong file.
+    const looksLikeModule = /^\s*(import|export)\s/m.test(text) || /^\s*\/\//.test(text);
+    const detail = looksLikeModule
+      ? `${file} is a JavaScript module, not JSON. A compiled module is shadowing the configuration file; check that no build output shares its name.`
+      : `${file} is not valid JSON: ${(parseError as Error).message}`;
+
+    throw new ConfigFileError(file, detail);
   }
 
   if (looksEncrypted(parsed)) {
