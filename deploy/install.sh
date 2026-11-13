@@ -35,27 +35,69 @@ SRC_DIR=$(cd "$(dirname "$0")/.." && pwd)
 
 # --- node -------------------------------------------------------------------
 #
-# The unit runs node from an absolute path. fnm, nvm and asdf install node under
-# the invoking user's home, which the `haste` account cannot execute, so that
-# node is rejected rather than producing a unit that fails at first start.
-command -v node >/dev/null 2>&1 || die "node is not installed; install Node 22+ system-wide"
-NODE_BIN=${NODE_BIN:-$(command -v node)}
+# The unit runs node from an absolute path, as the `haste` account. fnm, nvm and
+# asdf install node under the invoking user's home, which that account cannot
+# execute. A version manager also puts its shim first on PATH, so `command -v
+# node` is the *wrong* answer on a machine that has both.
+#
+# Resolution order: $NODE_BIN, then the system paths, then PATH. A home-directory
+# node is only an error when nothing else exists.
+# fnm, nvm, asdf and volta each install under the user's home or a runtime dir,
+# and put a shim first on PATH. Those paths are unusable by a system service
+# account, so they are recognised by marker rather than only by prefix: an fnm
+# shim can live under /run/user/<uid>/fnm_multishells/…
+home_node() {
+  case "$1" in
+    /root/* | /home/* | /Users/*) return 0 ;;
+    */fnm/* | */fnm_multishells/* | */nvm/* | */asdf/* | */volta/*) return 0 ;;
+    */.local/state/* | */.cache/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+NODE_BIN=${NODE_BIN:-}
+if [ -z "$NODE_BIN" ]; then
+  for candidate in /usr/bin/node /usr/local/bin/node /usr/sbin/node; do
+    if [ -x "$candidate" ]; then
+      NODE_BIN=$candidate
+      break
+    fi
+  done
+fi
+if [ -z "$NODE_BIN" ]; then
+  FOUND=$(command -v node || true)
+  [ -n "$FOUND" ] || die "node is not installed; install Node 22+ system-wide"
+  if home_node "$FOUND"; then
+    die "the only node on this machine is $FOUND, which lives under a home directory
+       and cannot be executed by the $SERVICE_USER service account. Install Node
+       system-wide, then re-run:
+         curl -fsSL https://deb.nodesource.com/setup_24.x | sudo sh -
+         sudo apt-get install -y nodejs"
+  fi
+  NODE_BIN=$FOUND
+fi
+
 [ -x "$NODE_BIN" ] || die "$NODE_BIN is not executable"
 NODE_MAJOR=$("$NODE_BIN" -p 'process.versions.node.split(".")[0]')
-[ "$NODE_MAJOR" -ge 22 ] || die "node $("$NODE_BIN" -v) is too old; this package requires >= 22"
+[ "$NODE_MAJOR" -ge 22 ] || die "$NODE_BIN is $("$NODE_BIN" -v); this package requires >= 22"
+say "using node $("$NODE_BIN" -v) at $NODE_BIN"
 
-case "$NODE_BIN" in
-  /root/* | /home/* | */.local/* | */fnm* | */nvm/*)
-    die "node at $NODE_BIN lives under a home directory and cannot be executed by the
-       $SERVICE_USER service account. Install Node system-wide, e.g.:
-         curl -fsSL https://deb.nodesource.com/setup_24.x | sh -
-         apt-get install -y nodejs
-       then re-run this script (or set NODE_BIN=/usr/bin/node)."
-    ;;
-esac
-
-command -v pnpm >/dev/null 2>&1 || die "pnpm is not installed; run 'corepack enable' or 'npm i -g pnpm'"
-PNPM_BIN=$(command -v pnpm)
+# pnpm has the same home-directory problem, but only this script runs it: the
+# unit does not. Prefer the sibling of the chosen node (corepack installs there),
+# then PATH.
+PNPM_BIN=${PNPM_BIN:-}
+if [ -z "$PNPM_BIN" ]; then
+  for candidate in "$(dirname "$NODE_BIN")/pnpm" /usr/bin/pnpm /usr/local/bin/pnpm; do
+    if [ -x "$candidate" ]; then
+      PNPM_BIN=$candidate
+      break
+    fi
+  done
+fi
+if [ -z "$PNPM_BIN" ]; then
+  PNPM_BIN=$(command -v pnpm || true)
+fi
+[ -n "$PNPM_BIN" ] || die "pnpm is not installed; run 'corepack enable' or 'npm i -g pnpm'"
 
 # --- service account --------------------------------------------------------
 if ! id -u "$SERVICE_USER" >/dev/null 2>&1; then
