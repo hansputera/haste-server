@@ -21,7 +21,7 @@ export default async function handler(
   request: IncomingMessage,
   response: ServerResponse
 ): Promise<void> {
-  appPromise ??= prepareForServerless(process.env.HASTE_CONFIG);
+  appPromise ??= prepareForServerless();
   const { app } = await appPromise;
   await handle(app.fetch)(request, response);
 }

@@ -267,14 +267,13 @@ describe('serverless storage', () => {
 });
 
 describe('bundled deployment', () => {
-  // A Netlify function is emitted as CommonJS by esbuild. Anything the bundle
-  // still `require()`s at runtime must therefore be loadable from CommonJS,
-  // and the app's own assets must not depend on `import.meta.url`.
-  it('should keep every dependency of the Netlify bundle requireable from CommonJS', async () => {
+  // Netlify emits this function as an ES module. esbuild inlines any dependency
+  // it can resolve, and an inlined CommonJS package that calls `require('tty')`
+  // or `require('stream')` throws "Dynamic require ... is not supported" at cold
+  // start. Every runtime dependency is therefore external.
+  it('should externalise every runtime dependency of the Netlify bundle', async () => {
     const netlifyToml = fs.readFileSync(path.join(process.cwd(), 'netlify.toml'), 'utf8');
 
-    // Only the packages the Netlify function leaves external are required at
-    // runtime; everything else is inlined by esbuild, which converts it.
     const externals = (netlifyToml.match(/external_node_modules = \[([^\]]*)\]/) ?? [null, ''])[1]
       .split(',')
       .map((entry) => entry.trim().replace(/^"|"$/g, ''))
@@ -282,24 +281,17 @@ describe('bundled deployment', () => {
 
     assert.ok(externals.length > 0, 'netlify.toml declares no externals');
 
-    for (const name of externals) {
-      const dir = path.join(process.cwd(), 'node_modules', name);
-      if (!fs.existsSync(dir)) continue; // optional store clients are absent by design
+    // Only what the Netlify function can reach: `@hono/vercel` is the Vercel
+    // handler's adapter and is never imported by this bundle.
+    const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
+    const reachable = Object.keys(pkg.dependencies).filter((name) => name !== '@hono/vercel');
+    const inlined = reachable.filter((name) => !externals.includes(name));
 
-      const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
-      const isEsmOnly =
-        manifest.type === 'module' &&
-        !(
-          manifest.exports &&
-          Object.values(manifest.exports).some((entry) => entry && entry.require)
-        );
-
-      assert.equal(
-        isEsmOnly,
-        false,
-        `${name} is ESM-only; a Netlify bundle that requires it fails at cold start`
-      );
-    }
+    assert.deepEqual(
+      inlined,
+      [],
+      'these are not externalised; esbuild will inline them and their requires will throw'
+    );
   });
 
   it('should resolve static assets from the application root, not import.meta.url', () => {
@@ -309,5 +301,36 @@ describe('bundled deployment', () => {
       !/new URL\([^)]*import\.meta\.url/.test(spec),
       'src/http.ts must not derive asset paths from import.meta.url'
     );
+  });
+
+  it('should boot a serverless app with no config file present', async () => {
+    // A function bundle ships no config.js. Before this was handled, every
+    // invocation failed with "invalid config: config: cannot read config.js".
+    const { prepareForServerless } = await import('../dist/http.js');
+
+    const saved = {
+      HASTE_CONFIG: process.env.HASTE_CONFIG,
+      HASTE_STORAGE__TYPE: process.env.HASTE_STORAGE__TYPE,
+      HASTE_STORAGE__PATH: process.env.HASTE_STORAGE__PATH
+    };
+
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'haste-noconfig-'));
+    delete process.env.HASTE_CONFIG;
+    process.env.HASTE_STORAGE__TYPE = 'file';
+    process.env.HASTE_STORAGE__PATH = dir;
+
+    try {
+      const created = await prepareForServerless();
+      const ready = await created.app.request('/readyz');
+
+      assert.equal(ready.status, 200);
+      assert.equal(created.config.storage.type, 'file');
+    } finally {
+      for (const [key, value] of Object.entries(saved)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

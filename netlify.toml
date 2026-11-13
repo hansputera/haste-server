@@ -5,12 +5,23 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
   included_files = ["static/**", "openapi.json", "about.md"]
-  # `@hono/netlify` is deliberately absent: it is ESM-only, and this bundler
-  # emits CommonJS, so externalising it produced `require()` of an ES module at
-  # cold start. `netlify/functions/server.ts` calls `app.fetch` directly instead.
-  # `pino` stays external because it is CommonJS and spawns a transport worker
-  # that a bundle would break; `hono` ships a CommonJS build.
-  external_node_modules = ["hono", "pino"]
+  # Every dependency is left to Node's own resolver.
+  #
+  # Netlify bundles this function as an ES module, and esbuild inlines any
+  # dependency it can find: a CommonJS package that calls `require('stream')` or
+  # `require('tty')` then throws "Dynamic require ... is not supported" at cold
+  # start. That hit `busboy`, `pino`'s transport, and `debug` (via
+  # `express-rate-limit` → `ip-address`) in turn. Leaving the whole dependency
+  # set external removes the class of failure rather than one instance of it;
+  # `node_modules` is installed on the function anyway.
+  external_node_modules = [
+    "busboy",
+    "express-rate-limit",
+    "hono",
+    "pg",
+    "pino",
+    "@hono/node-server",
+  ]
 
 [[redirects]]
   from = "/*"

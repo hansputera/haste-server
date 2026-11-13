@@ -16,7 +16,7 @@ let appPromise: Promise<CreatedApp> | undefined;
 const getApp = (): Promise<CreatedApp> => {
   // Vercel and Netlify both ship a per-invocation filesystem and no signal
   // handling; `prepareForServerless` marks the app ready for `/readyz`.
-  appPromise ??= prepareForServerless(process.env.HASTE_CONFIG);
+  appPromise ??= prepareForServerless();
   return appPromise;
 };
 

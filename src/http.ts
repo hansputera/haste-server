@@ -66,8 +66,22 @@ export interface CreatedApp {
   setReady: (ready: boolean) => void;
 }
 
-export const createApp = async (configPath?: string): Promise<CreatedApp> => {
-  const resolved = resolveConfig({ configPath });
+export interface CreateAppOptions {
+  /**
+   * Skip the config file entirely and take every value from the environment.
+   *
+   * A function bundle ships no `config.js`, so the default file layer would
+   * fail at cold start with "cannot read config.js". Serverless entrypoints set
+   * this unless the operator names a file explicitly.
+   */
+  withoutFile?: boolean;
+}
+
+export const createApp = async (
+  configPath?: string,
+  options: CreateAppOptions = {}
+): Promise<CreatedApp> => {
+  const resolved = resolveConfig({ configPath, withoutFile: options.withoutFile });
   const { config } = resolved;
   const log = createLogger(config.logging);
 
@@ -287,8 +301,18 @@ export const createApp = async (configPath?: string): Promise<CreatedApp> => {
 // listener is installed and no signal handlers are registered. Without this the
 // readiness probe would answer 503 for the life of every instance, which is
 // exactly what a platform health check reads as "not deployed".
-export const prepareForServerless = async (configPath?: string): Promise<CreatedApp> => {
-  const created = await createApp(configPath);
+//
+// Configuration comes from the environment. A bundle ships no `config.js`, so
+// the file layer is skipped unless `HASTE_CONFIG` names one — in which case a
+// missing file is still an error, because the operator asked for it.
+export const prepareForServerless = async (): Promise<CreatedApp> => {
+  const configuredPath = process.env.HASTE_CONFIG?.trim();
+  const requestedFile = Boolean(configuredPath);
+
+  const created = requestedFile
+    ? await createApp(configuredPath)
+    : await createApp(undefined, { withoutFile: true });
+
   created.setReady(true);
   return created;
 };
