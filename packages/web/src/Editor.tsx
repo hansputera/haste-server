@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from 'react';
 
 import { Card } from './Card';
+import { CarbonCredit } from './CarbonCredit';
 import { createDocument } from './api';
 import { cryptoAvailable, encrypt } from './crypto';
 import { LANGUAGES } from './languages';
@@ -141,6 +142,7 @@ export function Editor(): ReactElement {
       </div>
 
       <Card title={title} language={language} code={code} fallbackTitle="untitled" />
+      <CarbonCredit />
 
       <div className="v2-actions">
         <button type="button" onClick={() => void save()} disabled={saving || code.length === 0}>

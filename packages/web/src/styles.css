@@ -5,6 +5,17 @@
  * a card-based form wants. The palette is the same Solarized dark v1 uses.
  */
 
+/* Carbon's default face. The card must be drawn in it or it is only an
+   approximation of carbon.now.sh; the file is the same one the server renders
+   its preview image with (`packages/api/static/fonts/Hack-Regular.ttf`). */
+@font-face {
+  font-family: 'Hack';
+  src: url('/fonts/Hack-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --bg: #002b36;
   --surface: #073642;
@@ -160,84 +171,88 @@ button.v2-secondary {
   font-style: italic;
 }
 
-/* --- the card ------------------------------------------------------------ */
+/* --- the card: carbon.now.sh -------------------------------------------- */
 
-.v2-card {
-  /* The 1200×630 composition the server rasterises to PNG, so the preview an
-     author looks at matches the image a chat client unfurls. `aspect-ratio`
-     with a fluid width keeps the frame's proportions and reserves exactly the
-     height it paints, which a `transform: scale` would not. */
+/* Layout and colour come from Carbon's own components (MIT). The numbers are
+   in carbon.ts with a note on where each was read from; this file only places
+   them. Every inner dimension scales with the window width, so the card is one
+   composition at any size rather than a layout that reflows. */
+.carbon {
+  /* Carbon's default background, the colour it paints around the window. */
+  background: rgba(171, 184, 195, 1);
+  padding: 56px;
   width: 100%;
   max-width: 1200px;
-  aspect-ratio: 1200 / 630;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  /* Every dimension inside the card is expressed in `cqi` — 1% of the card's
-     own width — so the whole composition, type included, is the server's
-     1200×630 frame scaled; nothing is measured against the viewport. */
   container-type: inline-size;
-  font-size: 2cqi;
 }
 
-.v2-card-header {
-  display: flex;
-  align-items: center;
-  gap: 0.83cqi;
-  padding: 1.5cqi 2cqi;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+.carbon-window {
+  position: relative;
+  background: #151718;
+  border-radius: 5px;
+  box-shadow: 0 20px 68px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
 }
 
-.v2-dot {
-  width: 1.5cqi;
-  height: 1.5cqi;
-  border-radius: 50%;
-  display: inline-block;
-  flex: none;
+/* Carbon's strip sits 10px below the window's top edge, 14px in from the left,
+   and the code below it starts at 48px — the two overlap, which is why the
+   strip cannot simply be a row above the code. Values measured from
+   carbon.now.sh rather than read off the stylesheet. */
+.carbon-controls {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  z-index: 1;
 }
 
-.v2-dot-red {
-  background: #ff5f56;
-}
-.v2-dot-yellow {
-  background: #ffbd2e;
-}
-.v2-dot-green {
-  background: #27c93f;
-}
-
-.v2-card-title {
-  flex: 1;
+/* Carbon centres the title across the whole window and clamps it to
+   `calc(100% - 140px)` so it can never reach the dots: the strip is 14px in and
+   54px wide, so 70px of inset on each side is exactly clear of it. */
+.carbon-title {
+  position: absolute;
+  top: 9px;
+  left: 70px;
+  right: 70px;
   text-align: center;
-  color: var(--fg);
-  font-size: 1em;
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 14px;
+  color: #fff;
+  pointer-events: none;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.v2-card-body {
-  flex: 1;
-  padding: 2cqi 2.66cqi;
-  overflow: hidden;
+/* CodeMirror's padding in Carbon: 18px, 12px on the left for the gutter. */
+.carbon-body {
+  padding: 48px 18px 18px 12px;
 }
 
-.v2-card-code {
+.carbon-code {
   margin: 0;
-  font-size: 1.17em;
-  line-height: 1.5;
-  color: var(--muted);
+  font-family: 'Hack', var(--font);
+  font-size: 14px;
+  line-height: 1.33;
+  font-variant-ligatures: contextual;
+  font-feature-settings: 'calt' 1;
+  tab-size: 2;
   white-space: pre;
-  overflow: hidden;
+  overflow-x: auto;
+  color: #cfd2d1;
 }
 
-.v2-card-truncated {
-  margin: 0.66cqi 0 0;
-  color: var(--border);
+.carbon-truncated {
+  margin: 8px 0 0;
+  color: #41535b;
+  font-size: 12px;
+}
+
+.carbon-credit {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
 }
 
 /* --- viewer -------------------------------------------------------------- */

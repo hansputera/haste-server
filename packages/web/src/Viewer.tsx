@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactElement } from 'react';
 
 import { Card } from './Card';
+import { CarbonCredit } from './CarbonCredit';
 import { download, readDocument } from './api';
 import { decrypt } from './crypto';
 import type { V2Record } from './types';
@@ -123,6 +124,7 @@ export function Viewer({ id }: { id: string }): ReactElement {
         code={code}
         fallbackTitle={record.key}
       />
+      <CarbonCredit />
 
       <div className="v2-actions">
         <button type="button" onClick={() => void copyLink(record)}>

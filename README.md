@@ -596,3 +596,11 @@ SOFTWARE
 
 - highlight.js: Copyright © 2006, Ivan Sagalaev
 - highlightjs-coffeescript: WTFPL - Copyright © 2011, Dmytrii Nagirniak
+- Shiki: MIT - the syntax highlighter behind `/v2`
+- [Carbon](https://carbon.now.sh) ([carbon-app/carbon](https://github.com/carbon-app/carbon)):
+  MIT - the `/v2` card reproduces its window, control dots, spacing and Seti
+  theme, and the server renders the same design into link-preview images. The
+  card is not Carbon's code: the geometry and colours are measured from it and
+  reimplemented in `packages/web/src/carbon.ts` and
+  `packages/api/src/v2/og.ts`.
+- Hack (typeface): MIT - the card's font, as Carbon's default.

@@ -11,5 +11,13 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     emptyOutDir: true
+  },
+  // Shiki ships one grammar module per language and the worker imports all
+  // thirty, so the default single worker chunk is ~2.8 MB of grammars no
+  // visitor needs. `output.format: 'es'` keeps the worker as a module — the
+  // only form Vite code-splits — so each grammar becomes its own file and is
+  // fetched only when a paste names that language.
+  worker: {
+    format: 'es'
   }
 });
