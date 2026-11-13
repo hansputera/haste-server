@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
-import { fileURLToPath } from 'node:url';
 
 import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
@@ -38,21 +37,23 @@ import type { Config, DocumentStore } from './lib/types.js';
 // the health probes sit *before* `serveStatic`, which would otherwise resolve
 // `/healthz` to `index.html`; `serveStatic` comes last.
 
-const ROOT = new URL('../static/', import.meta.url).pathname;
+import { APP_ROOT, OPENAPI_PATH, STATIC_ROOT } from './lib/paths.js';
+
 // The directory the installed package is unpacked into (`dist/..`). Seeded
 // documents are named relative to it, so they resolve the same from a source
 // checkout, a `dist`-only function bundle, or a global npm install — none of
 // which share a working directory.
-const APP_ROOT = fileURLToPath(new URL('..', import.meta.url));
+//
+// `static/` and `openapi.json` are resolved by `lib/paths.ts`, which also covers
+// a CommonJS bundle where `import.meta.url` does not point at this module.
+const ROOT = STATIC_ROOT;
 // `serveStatic({ path })` requires an absolute path: a relative one (or a bare
 // '/') is passed through untouched by the middleware.
 const INDEX_FILE = join(ROOT, 'index.html');
 
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 
-const openapiSpec: unknown = JSON.parse(
-  readFileSync(new URL('../openapi.json', import.meta.url), 'utf8')
-);
+const openapiSpec: unknown = JSON.parse(readFileSync(OPENAPI_PATH, 'utf8'));
 
 export interface CreatedApp {
   app: Hono;

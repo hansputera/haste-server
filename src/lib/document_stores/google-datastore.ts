@@ -35,9 +35,7 @@ export default class GoogleDatastoreDocumentStore implements DocumentStore {
     if (!this.datastorePromise) {
       this.datastorePromise = loadModule<{
         default: new () => DatastoreClient;
-      }>('@google-cloud/datastore', import.meta.url).then(
-        ({ default: Datastore }) => new Datastore()
-      );
+      }>('@google-cloud/datastore').then(({ default: Datastore }) => new Datastore());
     }
     return this.datastorePromise;
   }

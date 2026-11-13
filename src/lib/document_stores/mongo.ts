@@ -90,7 +90,7 @@ export default class MongoDocumentStore implements DocumentStore {
     try {
       const { MongoClient } = await loadModule<{
         MongoClient: new (url?: string) => { connect(): Promise<void>; db(): MongoDb };
-      }>('mongodb', import.meta.url);
+      }>('mongodb');
       const client = new MongoClient(this.connectionUrl);
       await client.connect();
       this.db = client.db();

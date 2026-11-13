@@ -50,7 +50,7 @@ export default class RedisDocumentStore implements DocumentStore {
     const clientPromise = (async () => {
       const { createClient } = await loadModule<{
         createClient: (options: unknown) => RedisClient;
-      }>('redis', import.meta.url);
+      }>('redis');
       const client = createClient({
         socket: { host, port },
         password: options.password || undefined,

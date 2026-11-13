@@ -19,11 +19,32 @@ const log = createLogger();
 // Build the store from config. Stores are loaded on demand so that a missing
 // optional client (redis, memcached, ...) only fails the deployment that
 // actually selects it.
+//
+// Every store is named literally rather than interpolated from `storage.type`:
+// a bundler can only follow a static specifier, and Netlify's esbuild step emits
+// a single CommonJS file where `import.meta.url` cannot resolve a computed path.
+// The type is a validated enum member, so the switch is total.
+const STORE_MODULES = {
+  file: () => import('./lib/document_stores/file.js'),
+  redis: () => import('./lib/document_stores/redis.js'),
+  memcached: () => import('./lib/document_stores/memcached.js'),
+  mongo: () => import('./lib/document_stores/mongo.js'),
+  postgres: () => import('./lib/document_stores/postgres.js'),
+  'amazon-s3': () => import('./lib/document_stores/amazon-s3.js'),
+  'google-datastore': () => import('./lib/document_stores/google-datastore.js'),
+  rethinkdb: () => import('./lib/document_stores/rethinkdb.js')
+} as const;
+
+type StoreType = keyof typeof STORE_MODULES;
+
+interface StoreConstructor {
+  new (options: StorageOptions, client?: unknown): DocumentStore;
+}
+
 const buildStore = async (storage: StorageOptions): Promise<DocumentStore> => {
-  // The store type is a validated enum member, not free-form input.
-  const { default: Store } = await loadModule<{
-    default: new (options: StorageOptions, client?: unknown) => DocumentStore;
-  }>(`./lib/document_stores/${storage.type}.js`, import.meta.url);
+  const load = STORE_MODULES[storage.type as StoreType];
+  if (!load) throw new Error(`unknown storage type: ${storage.type}`);
+  const { default: Store } = (await load()) as { default: StoreConstructor };
 
   // Heroku-style REDISTOGO_URL takes precedence over the host/port fields.
   if (process.env.REDISTOGO_URL && storage.type === 'redis') {
@@ -32,7 +53,7 @@ const buildStore = async (storage: StorageOptions): Promise<DocumentStore> => {
         on: (event: 'error', listener: (error: unknown) => void) => void;
         connect: () => Promise<void>;
       };
-    }>('redis', import.meta.url);
+    }>('redis');
     const client = createClient({ url: process.env.REDISTOGO_URL });
     client.on('error', (error: unknown) => {
       log.error({ error: String(error) }, 'redis client error');
@@ -98,13 +119,28 @@ export const createStore = async (
   serverless && storage.type === 'file' ? createDeferredFileStore(storage) : buildStore(storage);
 
 // Pick up a key generator
+//
+// Static specifiers for the same reason as the stores: a bundler cannot follow
+// an interpolated path, and a CommonJS bundle has no `import.meta.url` to
+// resolve one against.
+const KEY_GENERATOR_MODULES = {
+  random: () => import('./lib/key_generators/random.js'),
+  phonetic: () => import('./lib/key_generators/phonetic.js'),
+  dictionary: () => import('./lib/key_generators/dictionary.js')
+} as const;
+
+type KeyGeneratorType = keyof typeof KEY_GENERATOR_MODULES;
+
 export const createKeyGenerator = async (
   options: { type?: string } = {}
 ): Promise<KeyGenerator> => {
   const type = options.type || 'random';
-  const { default: Generator } = await loadModule<{
+  const load = KEY_GENERATOR_MODULES[type as KeyGeneratorType];
+  if (!load) throw new Error(`unknown key generator: ${type}`);
+
+  const { default: Generator } = (await load()) as {
     default: new (options: { type?: string }) => KeyGenerator;
-  }>(`./lib/key_generators/${type}.js`, import.meta.url);
+  };
   return new Generator(options);
 };
 

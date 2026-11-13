@@ -4,8 +4,13 @@
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
-  included_files = ["static/**"]
-  external_node_modules = ["@hono/netlify", "hono", "pino"]
+  included_files = ["static/**", "openapi.json", "about.md"]
+  # `@hono/netlify` is deliberately absent: it is ESM-only, and this bundler
+  # emits CommonJS, so externalising it produced `require()` of an ES module at
+  # cold start. `netlify/functions/server.ts` calls `app.fetch` directly instead.
+  # `pino` stays external because it is CommonJS and spawns a transport worker
+  # that a bundle would break; `hono` ships a CommonJS build.
+  external_node_modules = ["hono", "pino"]
 
 [[redirects]]
   from = "/*"

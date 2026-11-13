@@ -47,12 +47,10 @@ export default class AmazonS3DocumentStore implements DocumentStore {
 
   client(): Promise<{ client: S3ClientInstance; module: S3Module }> {
     if (!this.clientPromise) {
-      this.clientPromise = loadModule<S3Module>('@aws-sdk/client-s3', import.meta.url).then(
-        (module) => {
-          const client = new module.S3Client({ region: this.region });
-          return { client, module };
-        }
-      );
+      this.clientPromise = loadModule<S3Module>('@aws-sdk/client-s3').then((module) => {
+        const client = new module.S3Client({ region: this.region });
+        return { client, module };
+      });
     }
     return this.clientPromise;
   }

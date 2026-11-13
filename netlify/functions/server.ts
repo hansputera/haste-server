@@ -1,22 +1,26 @@
-import { handle } from '@hono/netlify';
+import type { CreatedApp } from '../../dist/http.js';
+import { prepareForServerless } from '../../dist/http.js';
 
-import { createApp } from '../../src/http.js';
-import type { CreatedApp } from '../../src/http.js';
-
-// Netlify Functions invoke this per request. `@hono/netlify`'s `handle` takes a
-// Web `Request` and returns a `Response`; it must not be called with a Lambda or
-// Netlify event object.
+// Netlify Functions call this with a Web `Request` and expect a Web `Response`.
 //
-// Storage on Netlify cannot be the file store; `createApp` refuses that
-// combination at boot with an actionable message.
+// `app.fetch(request)` is that mapping. `@hono/netlify`'s `handle` is exactly
+// `(req, ctx) => app.fetch(req, { context })`, so it is inlined here instead of
+// imported: the package is ESM-only, and Netlify's esbuild bundler emits the
+// function as CommonJS, so an external `require('@hono/netlify')` fails at cold
+// start with ERR_REQUIRE_ESM.
+//
+// `context` is passed through as Hono's `env`, which is where a Netlify v2
+// function finds per-request bindings.
 let appPromise: Promise<CreatedApp> | undefined;
 
 const getApp = (): Promise<CreatedApp> => {
-  appPromise ??= createApp(process.env.HASTE_CONFIG || 'config.js');
+  // Vercel and Netlify both ship a per-invocation filesystem and no signal
+  // handling; `prepareForServerless` marks the app ready for `/readyz`.
+  appPromise ??= prepareForServerless(process.env.HASTE_CONFIG);
   return appPromise;
 };
 
-export const handler = async (request: Request, context: unknown): Promise<Response> => {
+export default async function handler(request: Request, context: unknown): Promise<Response> {
   const { app } = await getApp();
-  return handle(app.fetch)(request, context);
-};
+  return app.fetch(request, { context });
+}

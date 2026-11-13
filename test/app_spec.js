@@ -265,3 +265,49 @@ describe('serverless storage', () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 });
+
+describe('bundled deployment', () => {
+  // A Netlify function is emitted as CommonJS by esbuild. Anything the bundle
+  // still `require()`s at runtime must therefore be loadable from CommonJS,
+  // and the app's own assets must not depend on `import.meta.url`.
+  it('should keep every dependency of the Netlify bundle requireable from CommonJS', async () => {
+    const netlifyToml = fs.readFileSync(path.join(process.cwd(), 'netlify.toml'), 'utf8');
+
+    // Only the packages the Netlify function leaves external are required at
+    // runtime; everything else is inlined by esbuild, which converts it.
+    const externals = (netlifyToml.match(/external_node_modules = \[([^\]]*)\]/) ?? [null, ''])[1]
+      .split(',')
+      .map((entry) => entry.trim().replace(/^"|"$/g, ''))
+      .filter(Boolean);
+
+    assert.ok(externals.length > 0, 'netlify.toml declares no externals');
+
+    for (const name of externals) {
+      const dir = path.join(process.cwd(), 'node_modules', name);
+      if (!fs.existsSync(dir)) continue; // optional store clients are absent by design
+
+      const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
+      const isEsmOnly =
+        manifest.type === 'module' &&
+        !(
+          manifest.exports &&
+          Object.values(manifest.exports).some((entry) => entry && entry.require)
+        );
+
+      assert.equal(
+        isEsmOnly,
+        false,
+        `${name} is ESM-only; a Netlify bundle that requires it fails at cold start`
+      );
+    }
+  });
+
+  it('should resolve static assets from the application root, not import.meta.url', () => {
+    const spec = fs.readFileSync(path.join(process.cwd(), 'src', 'http.ts'), 'utf8');
+
+    assert.ok(
+      !/new URL\([^)]*import\.meta\.url/.test(spec),
+      'src/http.ts must not derive asset paths from import.meta.url'
+    );
+  });
+});

@@ -54,26 +54,25 @@ export default class RethinkDBStore implements DocumentStore {
     if (!this.connectionPromise) {
       const options = this.options;
 
-      this.connectionPromise = loadModule<{ default?: ReQLModule } & ReQLModule>(
-        'rethinkdb',
-        import.meta.url
-      ).then((module) => {
-        // The driver is CommonJS: the namespace's `default` carries `connect`.
-        const rethink: ReQLModule = module.default ?? module;
+      this.connectionPromise = loadModule<{ default?: ReQLModule } & ReQLModule>('rethinkdb').then(
+        (module) => {
+          // The driver is CommonJS: the namespace's `default` carries `connect`.
+          const rethink: ReQLModule = module.default ?? module;
 
-        const { promise, resolve, reject } = deferred<ReQLConnection>();
-        rethink.connect(
-          {
-            host: options.host || '127.0.0.1',
-            port: Number(options.port) || 28015,
-            db: options.db || 'haste',
-            user: options.user || 'admin',
-            password: options.password || ''
-          },
-          (error, connection) => (error ? reject(error) : resolve(connection))
-        );
-        return promise;
-      });
+          const { promise, resolve, reject } = deferred<ReQLConnection>();
+          rethink.connect(
+            {
+              host: options.host || '127.0.0.1',
+              port: Number(options.port) || 28015,
+              db: options.db || 'haste',
+              user: options.user || 'admin',
+              password: options.password || ''
+            },
+            (error, connection) => (error ? reject(error) : resolve(connection))
+          );
+          return promise;
+        }
+      );
     }
     return this.connectionPromise;
   }

@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@hono/netlify':
-        specifier: ^1.0.2
-        version: 1.0.2(hono@4.13.18)
       '@hono/node-server':
         specifier: ^2.1.8
         version: 2.1.8(hono@4.13.18)
@@ -203,12 +200,6 @@ packages:
   '@eslint/plugin-kit@0.7.3':
     resolution: {integrity: sha512-IkO+/KEUvwbVpiURZg+P7zF74z5Jxe0UgJxVni+RtoHQ6IZieXaO02kmadomap/q+l6bc/jdPGGqTjhuZnuz1Q==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
-
-  '@hono/netlify@1.0.2':
-    resolution: {integrity: sha512-T4bv6/6BSIjchabUqSvi4FuWibamSPb6riO2F235OlQro49wn0f5EM29IucJkKV4kUQb964EJ41bJ/CyEekjgA==}
-    engines: {node: '>=16.9.0'}
-    peerDependencies:
-      hono: '>=4.13.9 || ^5.0.0-0'
 
   '@hono/node-server@2.1.8':
     resolution: {integrity: sha512-jdf7FHh6A1lzjpHHQUgxsg2GeER2vMetnAOfeActzcoli6jamlK+NAwL6Dsr5Fl3BS3tYUQzCdtZjU8Qxv7bEA==}
@@ -1325,10 +1316,6 @@ snapshots:
     dependencies:
       '@eslint/core': 1.2.1
       levn: 0.4.1
-
-  '@hono/netlify@1.0.2(hono@4.13.18)':
-    dependencies:
-      hono: 4.13.18
 
   '@hono/node-server@2.1.8(hono@4.13.18)':
     dependencies:

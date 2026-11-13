@@ -34,7 +34,7 @@ export default class MemcachedDocumentStore implements DocumentStore {
   async connect(url: string): Promise<MemcachedClient> {
     const { default: Memcached } = await loadModule<{
       default: new (url: string, options: unknown) => MemcachedClient;
-    }>('memcached', import.meta.url);
+    }>('memcached');
     const client = new Memcached(url, {});
 
     log.info({ url }, 'connecting to memcached');
