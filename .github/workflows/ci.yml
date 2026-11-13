@@ -21,38 +21,42 @@ jobs:
         node: ['22', '24', '26']
     steps:
       - uses: actions/checkout@v4
+      # `pnpm/action-setup` reads the version from package.json's packageManager
+      # field; without it setup-node's pnpm cache has no pnpm to call.
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          cache: npm
-      - run: npm ci
-      - run: npm run check
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run check
       # `build` comes before `lint`: the serverless entrypoints import
       # `dist/`, and type-aware lint rules cannot resolve what has not been
       # emitted yet.
-      - run: npm run build
-      - run: npm run lint
-      - run: npm run check:config-docs
-      - run: npm run check:highlight
-      - run: npm run format:check
+      - run: pnpm run build
+      - run: pnpm run lint
+      - run: pnpm run check:config-docs
+      - run: pnpm run check:highlight
+      - run: pnpm run format:check
       - name: node version actually used
         run: node --version
-      - run: npm test
+      - run: pnpm test
 
   bun:
     name: bun
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: npm
+          cache: pnpm
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - run: npm ci
-      - run: npm run build
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
       - name: bun smoke test
         run: |
           PORT=7779 HOST=127.0.0.1 bun src/server.ts &
@@ -74,10 +78,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: npm
-      - run: npm ci
-      - run: npm audit --audit-level=high
-      - run: npm run check:openapi
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level=high
+      - run: pnpm run check:openapi

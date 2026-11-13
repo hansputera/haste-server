@@ -30,9 +30,9 @@ through their own loader.
 
 ## Consequences
 
-- A type error fails the build rather than a request. `npm run check` is the
+- A type error fails the build rather than a request. `pnpm run check` is the
   cheapest gate in CI.
-- `dist/` is build output and is gitignored; `npm start` builds first via
+- `dist/` is build output and is gitignored; `pnpm start` builds first via
   `prestart`, so a stale `dist/` cannot be served by accident.
 - Bun executing `src/` means Bun needs no build step, at the cost of Bun owning
   its own TypeScript handling. If a deployment pins a Bun too old to strip types,

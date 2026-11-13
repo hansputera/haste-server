@@ -1,6 +1,6 @@
 dist
 static
-package-lock.json
+pnpm-lock.yaml
 CHANGELOG.md
 data
 config.js

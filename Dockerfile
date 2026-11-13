@@ -1,23 +1,29 @@
 FROM node:24-alpine AS build
+# corepack pins the pnpm version from package.json's packageManager field, so
+# the image and a developer's machine resolve the same dependency graph.
+RUN corepack enable
 WORKDIR /app
-COPY package*.json tsconfig.json ./
-RUN npm ci
+COPY package.json pnpm-lock.yaml tsconfig.json ./
+RUN pnpm install --frozen-lockfile
 COPY . .
-RUN npm run build && npm prune --omit=dev
+RUN pnpm run build && pnpm prune --prod
 
 FROM node:24-alpine AS runtime
+RUN corepack enable
 ENV NODE_ENV=production
 WORKDIR /app
-COPY --from=build /app/package*.json ./
-COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/package.json /app/pnpm-lock.yaml ./
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/static ./static
 COPY --from=build /app/openapi.json /app/about.md ./
 COPY --from=build /app/docker-entrypoint.sh ./
 
 # The optional store clients are installed here so the image can run any store;
-# the package itself imports each one lazily, so a bare `npm install` does not.
-RUN npm install --no-save @aws-sdk/client-s3 @google-cloud/datastore mongodb memcached redis rethinkdb
+# the package itself imports each one lazily, so a bare install does not.
+# They are installed in this stage rather than copied from the builder: pnpm's
+# node_modules is a tree of symlinks into `.pnpm/`, and a partial copy of it
+# dangles. `--prod` skips the toolchain, so `tsc` and `eslint` stay out.
+RUN pnpm add @aws-sdk/client-s3 @google-cloud/datastore mongodb memcached redis rethinkdb
 
 ENV STORAGE_TYPE=memcached \
     STORAGE_HOST=127.0.0.1 \
@@ -65,4 +71,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 ENTRYPOINT ["sh", "docker-entrypoint.sh"]
 # `serve`, not `start`: the image prunes devDependencies, so `start`'s prestart
 # build would find no `tsc`. The build happened in the build stage.
-CMD ["npm", "run", "serve"]
+CMD ["node", "dist/server.js"]

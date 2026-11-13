@@ -67,6 +67,6 @@ if (unformatted.length === 0) {
 
 process.stderr.write(
   `format:check: not formatted:\n${unformatted.map((file) => `  ${file}`).join('\n')}\n` +
-    'Run `npm run format` (or `npx prettier --write <file>`) and commit the result.\n'
+    'Run `pnpm run format` (or `pnpm exec prettier --write <file>`) and commit the result.\n'
 );
 process.exit(1);

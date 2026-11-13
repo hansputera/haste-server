@@ -1,7 +1,7 @@
 version: 2
 
 updates:
-  - package-ecosystem: npm
+  - package-ecosystem: npm # pnpm is read from pnpm-lock.yaml under the npm ecosystem
     directory: /
     schedule:
       interval: weekly

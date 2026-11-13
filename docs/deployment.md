@@ -5,12 +5,12 @@ the storage and the configuration layer change.
 
 ## What every deployment needs
 
-| Requirement                        | Why                                                                                  |
-| ---------------------------------- | ------------------------------------------------------------------------------------ |
-| **Node.js ≥ 22**                   | `engines` requires it. Node 20 is end-of-life and receives no security fixes.        |
-| **A build step** (`npm run build`) | The app runs from `dist/`. Serverless entrypoints import `dist/http.js`, not `src/`. |
-| **A document store**               | Anything except a durable `file` directory loses pastes at the next restart.         |
-| **`HASTE_STORAGE__TYPE`**          | Defaults to `file`.                                                                  |
+| Requirement                         | Why                                                                                  |
+| ----------------------------------- | ------------------------------------------------------------------------------------ |
+| **Node.js ≥ 22**                    | `engines` requires it. Node 20 is end-of-life and receives no security fixes.        |
+| **A build step** (`pnpm run build`) | The app runs from `dist/`. Serverless entrypoints import `dist/http.js`, not `src/`. |
+| **A document store**                | Anything except a durable `file` directory loses pastes at the next restart.         |
+| **`HASTE_STORAGE__TYPE`**           | Defaults to `file`.                                                                  |
 
 Configuration resolves in one order: defaults, then the config file, then the
 environment. `HASTE_*` beats the legacy names (`STORAGE_TYPE`, `PORT`, …), and
@@ -79,7 +79,7 @@ resolved against the application root, so it works inside the function bundle.
 
 Vercel's default is Node 20, which this package rejects. `.nvmrc` at the
 repository root pins **24**; `engines.node` is `>=22`. Confirm the function runs
-24 by checking the deployment's build log — `npm install` prints the resolved
+24 by checking the deployment's build log — `pnpm add` prints the resolved
 version.
 
 ### 4. Build and files
@@ -88,7 +88,7 @@ version.
 
 ```json
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "pnpm run build",
   "builds": [{ "src": "api/index.ts", "use": "@vercel/node" }],
   "routes": [{ "src": "/(.*)", "dest": "api/index.js" }],
   "functions": {
@@ -111,9 +111,9 @@ add `*.md` to it — Vercel keeps the first matching rule, so it would also drop
 ### 5. Deploy
 
 ```bash
-npm run build          # prove it compiles locally first
-npx vercel             # preview
-npx vercel --prod      # production
+pnpm run build          # prove it compiles locally first
+pnpm dlx vercel             # preview
+pnpm dlx vercel --prod      # production
 ```
 
 Or connect the Git repository and let Vercel build on push. Every push builds
@@ -149,7 +149,7 @@ logs for the `config resolved` line and the error after it.
 
 ## Netlify
 
-`netlify.toml` builds with `npm run build` and routes every path to
+`netlify.toml` builds with `pnpm run build` and routes every path to
 `netlify/functions/server`. The same environment variables apply, plus
 `external_node_modules` already lists `@hono/netlify`, `hono` and `pino` so the
 bundler leaves them external. Set `HASTE_STORAGE__PATH=/tmp/haste` if you use the
@@ -176,10 +176,10 @@ recreation — the same trap as serverless, without the excuse.
 ## Bare Node
 
 ```bash
-npm ci
-npm run build
-HASTE_STORAGE__TYPE=file HASTE_STORAGE__PATH=/var/lib/haste npm start
+pnpm install --frozen-lockfile
+pnpm run build
+HASTE_STORAGE__TYPE=file HASTE_STORAGE__PATH=/var/lib/haste pnpm start
 ```
 
-`npm start` runs `dist/server.js`, which listens on `HASTE_HOST`:`HASTE_PORT`
+`pnpm start` runs `dist/server.js`, which listens on `HASTE_HOST`:`HASTE_PORT`
 (`0.0.0.0:7777`). `bun src/server.ts` runs the same app on Bun.

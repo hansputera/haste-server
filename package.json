@@ -61,13 +61,13 @@
   "scripts": {
     "build": "tsc",
     "postbuild": "node scripts/precompress.js && node scripts/copy-assets.mjs",
-    "prestart": "npm run build",
+    "prestart": "pnpm run build",
     "serve": "node dist/server.js",
     "start": "node dist/server.js",
     "dev": "node --watch --experimental-strip-types src/server.ts",
     "dev:bun": "bun --watch src/server.ts",
     "start:bun": "bun src/server.ts",
-    "test": "npm run build && node scripts/run-tests.mjs",
+    "test": "pnpm run build && node scripts/run-tests.mjs",
     "check": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -80,5 +80,9 @@
     "check:highlight": "node scripts/build-highlight.js --check"
   },
   "bundleDependencies": [],
-  "forkOf": "seejohnrun/haste-server"
+  "forkOf": "seejohnrun/haste-server",
+  "packageManager": "pnpm@10.33.0",
+  "pnpm": {
+    "onlyBuiltDependencies": []
+  }
 }

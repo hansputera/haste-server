@@ -44,26 +44,26 @@ Node.js **22 or newer** (24 and 26 LTS are tested), **or** Bun 1.4 or newer. Nod
 
 1.  Download the package, and expand it
 2.  Explore the settings inside of config.js, but the defaults should be good
-3.  `npm install`
-4.  `npm run build`
-5.  `npm start` (you may specify an optional `<config-path>` as well)
+3.  `pnpm add`
+4.  `pnpm run build`
+5.  `pnpm start` (you may specify an optional `<config-path>` as well)
 
-`prestart` rebuilds, so a plain `npm start` after an edit still serves the new
-code; the explicit `npm run build` in the list above is what produces `dist/` on
-a fresh checkout. `npm run serve` runs `dist/server.js` with no build step and no
+`prestart` rebuilds, so a plain `pnpm start` after an edit still serves the new
+code; the explicit `pnpm run build` in the list above is what produces `dist/` on
+a fresh checkout. `pnpm run serve` runs `dist/server.js` with no build step and no
 dev dependencies — that is what a production image or a PaaS `Procfile` uses.
 
 ## Development
 
-| command                           | what it does                              |
-| --------------------------------- | ----------------------------------------- |
-| `npm run dev`                     | `node --watch` on the TypeScript sources  |
-| `npm run dev:bun`                 | `bun --watch` on the TypeScript sources   |
-| `npm run check`                   | `tsc --noEmit` (strict)                   |
-| `npm run lint`                    | eslint, flat config, type-aware           |
-| `npm run format` / `format:check` | prettier                                  |
-| `npm test`                        | build, then `node --test` against `dist/` |
-| `npm run check:openapi`           | validates `openapi.json`                  |
+| command                            | what it does                              |
+| ---------------------------------- | ----------------------------------------- |
+| `pnpm run dev`                     | `node --watch` on the TypeScript sources  |
+| `pnpm run dev:bun`                 | `bun --watch` on the TypeScript sources   |
+| `pnpm run check`                   | `tsc --noEmit` (strict)                   |
+| `pnpm run lint`                    | eslint, flat config, type-aware           |
+| `pnpm run format` / `format:check` | prettier                                  |
+| `pnpm test`                        | build, then `node --test` against `dist/` |
+| `pnpm run check:openapi`           | validates `openapi.json`                  |
 
 ## Operations
 
@@ -164,7 +164,7 @@ HASTE_CONFIG=config.sops.json node dist/server.js
 refused rather than read as plaintext.
 
 ```sh
-npm run check:config-docs   # fails when docs/configuration.md drifted from the code
+pnpm run check:config-docs   # fails when docs/configuration.md drifted from the code
 ```
 
 ## Rate Limiting
@@ -223,11 +223,11 @@ File storage currently does not support paste expiration, you can follow [#191](
 
 ### Redis
 
-To use redis storage you must install the `redis` package in npm, and have
+To use redis storage you must install the `redis` package, and have
 `redis-server` running on the machine. The store imports it lazily, so it is
 only needed by deployments that select this type.
 
-`npm install redis`
+`pnpm add redis`
 
 Once you've done that, your config section should look like:
 
@@ -250,9 +250,9 @@ If your Redis server is configured for password authentification, use the `passw
 
 ### Postgres
 
-To use postgres storage you must install the `pg` package in npm
+To use postgres storage you must install the `pg` package
 
-`npm install pg`
+`pnpm add pg`
 
 Once you've done that, your config section should look like:
 
@@ -277,9 +277,9 @@ All of which are optional except `type` with very logical default values.
 
 ### MongoDB
 
-To use mongodb storage you must install the 'mongodb' package in npm
+To use mongodb storage you must install the 'mongodb' package
 
-`npm install mongodb`
+`pnpm add mongodb`
 
 Once you've done that, your config section should look like:
 
@@ -299,9 +299,9 @@ This is off by default, but will constantly kick back expirations on each view o
 
 ### Memcached
 
-To use memcache storage you must install the `memcached` package via npm
+To use memcache storage you must install the `memcached` package
 
-`npm install memcached`
+`pnpm add memcached`
 
 Once you've done that, your config section should look like:
 
@@ -323,7 +323,7 @@ All of which are optional except `type` with very logical default values.
 
 To use the RethinkDB storage system, install the official `rethinkdb` driver:
 
-`npm install rethinkdb`
+`pnpm add rethinkdb`
 
 The previous `rethinkdbdash` client has had no release since 2022 and is no
 longer used.
@@ -346,9 +346,9 @@ You can optionally add the `user` and `password` properties to use a user system
 
 ### Google Datastore
 
-To use the Google Datastore storage system, you must install the `@google-cloud/datastore` package via npm
+To use the Google Datastore storage system, you must install the `@google-cloud/datastore` package
 
-`npm install @google-cloud/datastore`
+`pnpm add @google-cloud/datastore`
 
 Once you've done that, your config section should look like this:
 
@@ -365,7 +365,7 @@ Authentication is handled automatically by [Google Cloud service account credent
 To use [Amazon S3](https://aws.amazon.com/s3/) as a storage system, you must
 install the AWS SDK for JavaScript v3:
 
-`npm install @aws-sdk/client-s3`
+`pnpm add @aws-sdk/client-s3`
 
 The v2 `aws-sdk` package reached end-of-support and is no longer used.
 
@@ -406,9 +406,9 @@ therefore runs as a long-lived process or as a function.
 ### Any server (VPS, container, PaaS with a Node runtime)
 
 ```bash
-npm ci
-npm run build
-PORT=8080 HOST=0.0.0.0 npm run serve
+pnpm install --frozen-lockfile
+pnpm run build
+PORT=8080 HOST=0.0.0.0 pnpm run serve
 ```
 
 Or point the platform at `dist/server.js` directly. Set `PORT`; most hosts inject
@@ -438,7 +438,7 @@ store writes to `./data`, so mount a volume owned by uid 1000 or point
 `vercel.json` routes every request to `api/index.ts`, which delegates to
 `@hono/vercel`'s Node handler, imports `dist/http.js` and ships `static/`,
 `openapi.json` and `about.md` through `includeFiles`. The build command is
-`npm run build`. `.nvmrc` pins Node 24, because Vercel's default (20) is below
+`pnpm run build`. `.nvmrc` pins Node 24, because Vercel's default (20) is below
 the package's floor.
 
 Set `HASTE_CONFIG=` (empty) so configuration comes from the environment only,
@@ -452,7 +452,7 @@ that must persist. Full walkthrough, including the Postgres schema:
 
 `netlify.toml` redirects every request to `netlify/functions/server.ts`, which
 delegates to `@hono/netlify`'s Web `Request`/`Response` handler. The build command
-is `npm run build` for the same reason. The `file` store works there but is not
+is `pnpm run build` for the same reason. The `file` store works there but is not
 durable; see [`docs/deployment.md`](docs/deployment.md).
 
 ### Serverless storage
@@ -469,12 +469,12 @@ invalid URL only fails on the first query.
 
 `file` works on a server that owns its disk and nowhere else. Store clients are
 imported lazily: selecting `redis` requires the `redis` package installed, and
-so on. The Docker image installs all of them; a bare `npm install` installs only
+so on. The Docker image installs all of them; a bare `pnpm add` installs only
 the declared dependencies (`hono`, `@hono/node-server`, `@hono/vercel`,
 `@hono/netlify`, `busboy`, `express-rate-limit`, `pino`, `pg`), so add your client:
 
 ```bash
-npm install redis        # or memcached, mongodb, @aws-sdk/client-s3, @google-cloud/datastore, rethinkdb
+pnpm add redis        # or memcached, mongodb, @aws-sdk/client-s3, @google-cloud/datastore, rethinkdb
 ```
 
 ## Docker

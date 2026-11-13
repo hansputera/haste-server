@@ -36,7 +36,7 @@ the only writable path a `file` deployment has there.
   `mongo`, `memcached`, `amazon-s3`, `google-datastore` or `rethinkdb`.
 - Seeded documents (`documents`, `HASTE_DOCUMENTS='about=./about.md'`) resolve
   relative paths against the **application root** (`dist/..`), not the process
-  working directory. A function bundle and a `dist`-only npm install do not run
+  working directory. A function bundle and a `dist`-only pnpm add do not run
   from the directory the paths were authored against.
 - Serverless entrypoints call `prepareForServerless`, which additionally marks
   the app ready. Nothing installs a listener or a signal handler there, so

@@ -142,7 +142,7 @@ if (process.argv.includes('--check')) {
 
   if (actual !== expected) {
     process.stderr.write(
-      'static/highlight.min.js is stale: run `npm run gen:highlight` and commit the result\n'
+      'static/highlight.min.js is stale: run `pnpm run gen:highlight` and commit the result\n'
     );
     process.exit(1);
   }

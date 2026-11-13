@@ -4,13 +4,13 @@
 
 - Node.js **≥ 22** (24 LTS and 26 LTS are tested), **or** Bun ≥ 1.4. Node 20 is
   end-of-life and unsupported.
-- npm ≥ 10.
+- pnpm ≥ 10 (`corepack enable` pins the version in `package.json`).
 
 ## Setup
 
 ```sh
-npm ci
-npm run build
+pnpm install --frozen-lockfile
+pnpm run build
 ```
 
 ## The five commands CI runs
@@ -18,14 +18,14 @@ npm run build
 Every pull request must pass, in this order:
 
 ```sh
-npm run check         # tsc --noEmit, strict
-npm run lint          # eslint, flat config, type-aware
-npm run format:check  # prettier --check
-npm run build         # tsc + precompress + copy assets
-npm test              # node --test against dist/
+pnpm run check         # tsc --noEmit, strict
+pnpm run lint          # eslint, flat config, type-aware
+pnpm run format:check  # prettier --check
+pnpm run build         # tsc + precompress + copy assets
+pnpm test              # node --test against dist/
 ```
 
-Run them locally before pushing. `npm run format` fixes formatting; it is the only
+Run them locally before pushing. `pnpm run format` fixes formatting; it is the only
 command that writes to your tree.
 
 The Redis store spec skips itself (`# SKIP redis not reachable on 127.0.0.1:6379`)
@@ -72,10 +72,10 @@ type(scope): subject
 
 ## Pull request checklist
 
-- [ ] `npm run check`, `lint`, `format:check`, `build`, `test` all pass locally.
+- [ ] `pnpm run check`, `lint`, `format:check`, `build`, `test` all pass locally.
 - [ ] New behaviour has a spec in `test/`, or the PR states why no spec can capture it.
 - [ ] Public surface changes (`/documents`, `/raw`, `/healthz`, `/readyz`) update
-      `openapi.json`; `npm run check:openapi` passes.
+      `openapi.json`; `pnpm run check:openapi` passes.
 - [ ] `src/` has no `console.*`; logging goes through `src/lib/log.ts`.
 - [ ] No store client (`redis`, `memcached`, `mongodb`, …) was added to
       `package.json`: they stay optional and are imported at runtime.
