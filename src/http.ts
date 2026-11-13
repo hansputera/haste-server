@@ -23,7 +23,7 @@ import {
   staticCacheControl,
   type DocumentService,
   type StaticIndex
-} from './app.js';
+} from './core.js';
 import { describeResolvedConfig, resolveConfig } from './config.js';
 import { deferred } from './lib/deferred.js';
 import { createLogger, type Logger } from './lib/log.js';

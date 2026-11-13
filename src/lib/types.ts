@@ -3,7 +3,7 @@
 // Every store is callback-shaped and stays that way: the seven third-party
 // clients each have their own completion style and rewriting all of them to
 // promises would mean seven independent migration risks for no user-visible
-// gain. The `Promise` wrapper lives in `app.ts` instead.
+// gain. The `Promise` wrapper lives in `core.ts` instead.
 
 export type StoreCallback<T> = (result: T) => void;
 

@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createDocumentService } from '../dist/app.js';
+import { createDocumentService } from '../dist/core.js';
 import Generator from '../dist/lib/key_generators/random.js';
 
 const DEFAULT_KEY_LENGTH = 10;

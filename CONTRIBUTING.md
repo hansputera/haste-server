@@ -36,7 +36,7 @@ when no Redis is listening, so the suite passes on a machine without one.
 | path             | contents                                                           |
 | ---------------- | ------------------------------------------------------------------ |
 | `src/`           | TypeScript sources, compiled to `dist/` by `tsc`                   |
-| `src/app.ts`     | framework-neutral request handling, stores, key selection          |
+| `src/core.ts`    | framework-neutral request handling, stores, key selection          |
 | `src/http.ts`    | Hono middleware, routes, error contract                            |
 | `src/config.ts`  | config parse + validation                                          |
 | `src/runtime.ts` | Node/Bun listener and graceful shutdown                            |

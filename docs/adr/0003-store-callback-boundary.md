@@ -17,7 +17,7 @@ never happens in CI.
 
 - The boundary is `DocumentStore` in `src/lib/types.ts`: callback-shaped `get`
   and `set`, with `string | false` as the miss sentinel.
-- The `Promise` wrapper lives in `src/app.ts` (`getStore`, `setStore`), once,
+- The `Promise` wrapper lives in `src/core.ts` (`getStore`, `setStore`), once,
   not in each store.
 - `store.get`'s `resolve` is passed straight to the callback: a promise settles
   once, so a store that calls its callback twice cannot double-settle.

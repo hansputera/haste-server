@@ -12,7 +12,7 @@ import {
   seedDocuments,
   staticCacheControl,
   buildRateLimiter
-} from '../dist/app.js';
+} from '../dist/core.js';
 import { deferred } from '../dist/lib/deferred.js';
 import RandomKeyGenerator from '../dist/lib/key_generators/random.js';
 

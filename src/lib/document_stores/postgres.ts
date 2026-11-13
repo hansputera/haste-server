@@ -18,6 +18,27 @@ interface PgPool {
 
 // create table entries (id serial primary key, key varchar(255) not null, value text not null, expiration int, unique(key));
 
+// Postgres errors explain a broken deployment far better than the message alone,
+// and a serverless platform adds two failure modes an operator will not guess:
+// a hostname with no IPv4 record, and a direct database host that only accepts
+// connections from inside the provider's own network.
+const describe = (error: unknown): string => {
+  const message = String(error);
+  if (/ENOTFOUND/.test(message)) {
+    return `${message} — the host did not resolve. A managed Postgres that offers only an IPv6 address (Supabase's direct db.* host, for example) cannot be reached from an IPv4-only function runtime; use the provider's IPv4 connection pooler instead.`;
+  }
+  if (/ECONNREFUSED/.test(message)) {
+    return `${message} — nothing is listening. Check the port: 5432 is the direct port, and a transaction pooler usually uses 6543.`;
+  }
+  if (/password authentication failed|role .* does not exist/.test(message)) {
+    return `${message} — an authentication failure. A pooler often needs the username in the form user.project-ref rather than the bare role name.`;
+  }
+  if (/does not support SSL|no pg_hba.conf entry/.test(message)) {
+    return `${message} — TLS is required. Append ?sslmode=require to DATABASE_URL.`;
+  }
+  return message;
+};
+
 export default class PostgresDocumentStore implements DocumentStore {
   private readonly expireJS: number;
   private readonly connectionString: string | undefined;
@@ -37,7 +58,7 @@ export default class PostgresDocumentStore implements DocumentStore {
       return import('pg').then((pg) => {
         this.pool = new pg.default.Pool({ connectionString: this.connectionString });
         this.pool.on('error', (error) => {
-          log.error({ error: String(error) }, 'postgres pool error');
+          log.error({ error: describe(error) }, 'postgres pool error');
         });
         return this.pool;
       });
@@ -72,7 +93,7 @@ export default class PostgresDocumentStore implements DocumentStore {
       )
       .then(() => callback(true))
       .catch((error: unknown) => {
-        log.error({ error: String(error) }, 'error persisting value to postgres');
+        log.error({ error: describe(error) }, 'error persisting value to postgres');
         callback(false);
       });
   }
@@ -103,7 +124,7 @@ export default class PostgresDocumentStore implements DocumentStore {
         }
       })
       .catch((error: unknown) => {
-        log.error({ error: String(error) }, 'error retrieving value from postgres');
+        log.error({ error: describe(error) }, 'error retrieving value from postgres');
         callback(false);
       });
   }
