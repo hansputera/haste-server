@@ -154,22 +154,85 @@ textarea {
 #box2 .function.enabled.twitter:hover { background-position: -153px bottom; }
 #box2 .button-picture{ border-width: 0; font-size: inherit; }
 
-/* Same box metrics as a `.function` button, but deliberately not that class:
-   `configureButtons` binds `click` with `preventDefault()` on every
-   `#box2 .function`, which would swallow the link. */
+/* A pill rather than another grey icon: it has to read as "there is a new
+   editor", not as a sixth button. Deliberately not `.function` — that class is
+   what `configureButtons` binds `click` on, with `preventDefault()`. */
 #box2 .v2link {
-	width: 32px;
-	height: 37px;
 	display: inline-block;
-	font-size: 13px;
-	line-height: 37px;
-	text-align: center;
+	margin-left: 10px;
+	padding: 0 10px;
+	height: 22px;
+	line-height: 22px;
+	vertical-align: 8px;
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
 	text-decoration: none;
-	color: #93a1a1;
+	border-radius: 11px;
+	color: #002b36;
+	background: #b58900;
 }
 
 #box2 .v2link:hover {
+	background: #cb4b16;
+	color: #fdf6e3;
+}
+
+#box2 .v2link:focus-visible {
+	outline: 2px solid #eee8d5;
+	outline-offset: 2px;
+}
+
+/* The recommendation banner, above the editor. Dismissed once per browser; the
+   button stays regardless, so the entry point is never lost. */
+#v2-banner {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	z-index: 10;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	padding: 10px 48px;
+	background: #073642;
+	border-bottom: 1px solid #586e75;
+	font-size: 13px;
 	color: #eee8d5;
+}
+
+#v2-banner a {
+	color: #b58900;
+	font-weight: 600;
+}
+
+#v2-banner a:hover {
+	color: #cb4b16;
+}
+
+#v2-banner button {
+	position: absolute;
+	right: 14px;
+	top: 50%;
+	transform: translateY(-50%);
+	background: none;
+	border: 0;
+	color: #93a1a1;
+	font-size: 18px;
+	line-height: 1;
+	cursor: pointer;
+	padding: 4px 8px;
+}
+
+#v2-banner button:hover {
+	color: #eee8d5;
+}
+
+/* The banner occupies the top strip; push the editor by its height. */
+body.has-v2-banner #key {
+	top: 40px;
 }
 
 #messages {

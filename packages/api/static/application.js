@@ -441,8 +441,36 @@ window.addEventListener('popstate', function(evt) {
   try { handlePop(evt.target); } catch(err) { /* not loaded yet */ }
 });
 
+// The v2 recommendation banner. Dismissal is remembered so a returning author
+// is not nagged; the `v2` button in the toolbar is untouched by this, so the
+// entry point survives a dismissal.
+var V2_BANNER_DISMISSED = 'haste:v2-banner-dismissed';
+
+var configureV2Banner = function() {
+  var banner = document.querySelector('#v2-banner');
+  if (!banner) { return; }
+
+  var dismissed = false;
+  try { dismissed = window.localStorage.getItem(V2_BANNER_DISMISSED) === '1'; }
+  catch (err) { /* storage blocked: show it every time rather than hide it */ }
+
+  if (dismissed) { return; }
+
+  banner.hidden = false;
+  // The banner is fixed above the editor, so the toolbar has to move down.
+  document.body.classList.add('has-v2-banner');
+
+  banner.querySelector('button').addEventListener('click', function() {
+    banner.hidden = true;
+    document.body.classList.remove('has-v2-banner');
+    try { window.localStorage.setItem(V2_BANNER_DISMISSED, '1'); }
+    catch (err) { /* nothing to persist to */ }
+  });
+};
+
 document.addEventListener('DOMContentLoaded', function() {
   app = new haste('hastebin', { twitter: true });
   configureTab();
+  configureV2Banner();
   handlePop(window);
 });
