@@ -91,6 +91,7 @@ version.
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "buildCommand": "pnpm run build",
+  "outputDirectory": "static",
   "functions": {
     "api/index.ts": {
       "maxDuration": 30,
@@ -101,7 +102,7 @@ version.
 }
 ```
 
-Three properties are load-bearing:
+Four properties are load-bearing:
 
 - **`framework: null`.** Without it Vercel auto-detects a Node project and
   starts `src/server.ts` as a long-running app: that entry binds a port and
@@ -109,6 +110,13 @@ Three properties are load-bearing:
   `cannot read config.js: file does not exist`. `null` is how `vercel.json`
   selects the "Other" framework preset, which leaves `api/index.ts` as the only
   entry.
+
+- **`outputDirectory: "static"`.** With no framework selected, Vercel still
+  expects a static output directory and defaults to `public`, which this project
+  does not have (`[STATIC_BUILD_NO_OUT_DIR] No Output Directory named "public"`).
+  `static/` is that directory. Its files are served from the CDN, and because
+  the filesystem is checked before rewrites, everything else — `/documents`,
+  `/raw/…`, `/healthz` — falls through to the function.
 
 - **No `builds`.** Vercel rejects a config that pairs `builds` with `functions`
   ("The functions property cannot be used in combination with builds"), and

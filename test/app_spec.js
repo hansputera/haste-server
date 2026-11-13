@@ -314,6 +314,26 @@ describe('bundled deployment', () => {
       'vercel.json must set "framework": null so api/index.ts is the only entry'
     );
 
+    // With no framework, Vercel still requires a static output directory and
+    // defaults to "public", which this project does not have:
+    // `[STATIC_BUILD_NO_OUT_DIR] No Output Directory named "public" found`.
+    // `static/` is that directory — the files are served from the CDN and
+    // everything else falls through to the function.
+    assert.equal(config.outputDirectory, 'static');
+    assert.ok(
+      fs.existsSync(path.join(process.cwd(), 'static', 'index.html')),
+      'outputDirectory must contain index.html'
+    );
+
+    // Filesystem beats rewrites, so a static file at an API path would shadow
+    // the function entirely.
+    for (const reserved of ['documents', 'raw', 'healthz', 'readyz', 'openapi.json']) {
+      assert.ok(
+        !fs.existsSync(path.join(process.cwd(), 'static', reserved)),
+        `static/${reserved} would shadow the function route`
+      );
+    }
+
     // "The functions property cannot be used in combination with builds" —
     // Vercel rejects the deployment outright.
     assert.ok(
