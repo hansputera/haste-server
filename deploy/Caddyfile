@@ -1,0 +1,45 @@
+# Caddy reverse proxy for Haste on a single VPS.
+#
+# Caddy obtains and renews the TLS certificate itself; there is no certbot
+# timer to forget. Replace paste.example.com with your domain and make sure it
+# already points at this server's IPv4/IPv6 address.
+#
+#   sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+#
+# Install: https://caddyserver.com/docs/install (Debian/Ubuntu gets a package
+# from the official repository).
+
+paste.example.com {
+	encode gzip zstd
+
+	# Vercel-sized limits do not apply here, but a single 100 MiB upload on a
+	# 2 GiB box is a memory event. Keep the ceiling below the app's 100 MiB.
+	request_body {
+		max_size 25MB
+	}
+
+	reverse_proxy 127.0.0.1:7777 {
+		# Preserve the client address for rate limiting. `X-Forwarded-For` is
+		# trusted only because Haste binds to loopback and nothing else can
+		# reach it.
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Request-Id {http.request.uuid}
+
+		# Keep-alive to the app process so a burst does not open a socket per
+		# request.
+		transport http {
+			keepalive 30s
+			keepalive_idle_conns 16
+		}
+	}
+
+	# Long-lived caching for fingerprint-free static assets is the app's job;
+	# do not add its own Cache-Control here.
+	log {
+		output file /var/log/caddy/haste-access.log {
+			roll_size 50MiB
+			roll_keep 5
+		}
+	}
+}
