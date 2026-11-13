@@ -306,6 +306,14 @@ describe('bundled deployment', () => {
   it('should keep vercel.json to properties Vercel accepts together', () => {
     const config = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'vercel.json'), 'utf8'));
 
+    // Without this, Vercel auto-detects a Node server and runs src/server.ts,
+    // which needs config.js and binds a port. `null` selects "Other".
+    assert.equal(
+      config.framework,
+      null,
+      'vercel.json must set "framework": null so api/index.ts is the only entry'
+    );
+
     // "The functions property cannot be used in combination with builds" —
     // Vercel rejects the deployment outright.
     assert.ok(

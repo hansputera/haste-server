@@ -89,6 +89,7 @@ version.
 ```json
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
   "buildCommand": "pnpm run build",
   "functions": {
     "api/index.ts": {
@@ -100,7 +101,14 @@ version.
 }
 ```
 
-Two properties are load-bearing:
+Three properties are load-bearing:
+
+- **`framework: null`.** Without it Vercel auto-detects a Node project and
+  starts `src/server.ts` as a long-running app: that entry binds a port and
+  requires `config.js`, so the deployment dies with
+  `cannot read config.js: file does not exist`. `null` is how `vercel.json`
+  selects the "Other" framework preset, which leaves `api/index.ts` as the only
+  entry.
 
 - **No `builds`.** Vercel rejects a config that pairs `builds` with `functions`
   ("The functions property cannot be used in combination with builds"), and
