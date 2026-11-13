@@ -88,17 +88,27 @@ version.
 
 ```json
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "pnpm run build",
-  "builds": [{ "src": "api/index.ts", "use": "@vercel/node" }],
-  "routes": [{ "src": "/(.*)", "dest": "api/index.js" }],
   "functions": {
     "api/index.ts": {
       "maxDuration": 30,
-      "includeFiles": ["static/**", "openapi.json", "about.md"]
+      "includeFiles": "{static/**,openapi.json,about.md}"
     }
-  }
+  },
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }]
 }
 ```
+
+Two properties are load-bearing:
+
+- **No `builds`.** Vercel rejects a config that pairs `builds` with `functions`
+  ("The functions property cannot be used in combination with builds"), and
+  `builds` is the legacy mechanism anyway. `api/index.ts` is detected as a
+  function without being declared.
+- **`rewrites`, not `routes`.** `routes` is the legacy counterpart to `builds`.
+  A function named `api/index.ts` is served at `/api/index`, which is the
+  rewrite destination.
 
 `includeFiles` is not optional: `static/` is served from disk and `about.md` is
 read at boot. Without it the deployment answers `404` for every asset and logs

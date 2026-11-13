@@ -303,6 +303,29 @@ describe('bundled deployment', () => {
     );
   });
 
+  it('should keep vercel.json to properties Vercel accepts together', () => {
+    const config = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'vercel.json'), 'utf8'));
+
+    // "The functions property cannot be used in combination with builds" —
+    // Vercel rejects the deployment outright.
+    assert.ok(
+      !('builds' in config && 'functions' in config),
+      'vercel.json pairs builds with functions; Vercel rejects that combination'
+    );
+
+    // `routes` belongs to the legacy `builds` mechanism; `rewrites` is its
+    // replacement and cannot be mixed with it.
+    assert.ok(
+      !('routes' in config && 'rewrites' in config),
+      'vercel.json mixes legacy routes with rewrites'
+    );
+
+    // A function at api/index.ts answers at /api/index.
+    for (const rule of config.rewrites ?? []) {
+      assert.equal(rule.destination, '/api/index');
+    }
+  });
+
   it('should boot a serverless app with no config file present', async () => {
     // A function bundle ships no config.js. Before this was handled, every
     // invocation failed with "invalid config: config: cannot read config.js".
